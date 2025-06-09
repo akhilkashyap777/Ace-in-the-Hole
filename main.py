@@ -3,10 +3,13 @@ import os
 import threading
 import subprocess
 import sys
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
+from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.label import MDLabel
+from kivymd.uix.button import MDRaisedButton, MDIconButton
+from kivymd.uix.card import MDCard
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.scrollview import MDScrollView
 from kivy.core.window import Window
 from game_widget import GameWidget
 from photo_vault import integrate_photo_vault
@@ -27,7 +30,7 @@ except ImportError:
     ANDROID = False
     print("Not running on Android - volume buttons will use arrow keys")
 
-class VaultApp(App):
+class VaultApp(MDApp):
     def __init__(self):
         super().__init__()
         self.volume_pattern = []
@@ -36,12 +39,15 @@ class VaultApp(App):
         self.current_screen = 'game'
         
     def build(self):
+        self.theme_cls.theme_style = "Dark"
+        self.theme_cls.primary_palette = "BlueGray"
+        
         if ANDROID:
             request_permissions([Permission.WRITE_EXTERNAL_STORAGE])
         
         Window.bind(on_key_down=self.on_key_down)
         
-        self.main_layout = BoxLayout(orientation='vertical')
+        self.main_layout = MDBoxLayout(orientation='vertical')
 
         self.secure_storage = SecureStorage("SecretVault")
         print(f"🔒 Secure storage: {self.secure_storage.get_storage_info()['base_directory']}")
@@ -58,25 +64,17 @@ class VaultApp(App):
         self.main_layout.add_widget(self.game_widget)
         
         # Control buttons
-        button_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1, spacing=10, padding=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=0.1, spacing=10, padding=10)
         
-        start_btn = Button(text='Start Game', font_size=18)
+        start_btn = MDRaisedButton(text='Start Game', size_hint_x=0.5)
         start_btn.bind(on_press=self.start_game)
         button_layout.add_widget(start_btn)
         
-        reset_btn = Button(text='Reset', font_size=18)
+        reset_btn = MDRaisedButton(text='Reset', size_hint_x=0.5)
         reset_btn.bind(on_press=self.reset_game)
         button_layout.add_widget(reset_btn)
         
         self.main_layout.add_widget(button_layout)
-        
-        # Status label
-        self.status_label = Label(
-            text='Status: Ready | Secret: ↑↓↑↓↑ to open vault',
-            font_size=14,
-            size_hint_y=0.05
-        )
-        self.main_layout.add_widget(self.status_label)
         
         return self.main_layout
     
@@ -95,10 +93,6 @@ class VaultApp(App):
             if len(self.volume_pattern) > 5:
                 self.volume_pattern.pop(0)
             
-            # Update status based on current screen
-            if self.current_screen == 'game':
-                self.status_label.text = f'Pattern: {" ".join(self.volume_pattern)} | Target: ↑↓↑↓↑'
-            
             if self.volume_pattern == self.target_pattern:
                 self.open_vault()
             
@@ -108,13 +102,96 @@ class VaultApp(App):
     
     def start_game(self, instance):
         self.game_widget.start_game()
-        if self.current_screen == 'game':
-            self.status_label.text = 'Status: Game Running | Secret: ↑↓↑↓↑ to open vault'
     
     def reset_game(self, instance):
         if self.game_widget.game:
             self.game_widget.game.reset_game()
             self.game_widget.game.show_cards()
+    
+    def create_vault_card(self, icon, title, subtitle, callback):
+        """Create a beautiful card for vault sections with proper sizing and rectangular shape"""
+        card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height="120dp",  # Increased height to accommodate content
+            size_hint_x=1,   # Full width
+            padding="15dp",  # Increased padding
+            spacing="8dp",
+            elevation=4,
+            radius=[8, 8, 8, 8],  # Reduced radius for more rectangular look
+            md_bg_color=self.theme_cls.primary_color,
+            ripple_behavior=True  # Add ripple effect for better UX
+        )
+        
+        content_layout = MDBoxLayout(
+            orientation='horizontal', 
+            spacing="20dp",
+            size_hint_y=1,
+            adaptive_height=True
+        )
+        
+        # Icon container with fixed size
+        icon_container = MDBoxLayout(
+            size_hint_x=None,
+            width="60dp",
+            orientation='vertical',
+            pos_hint={'center_y': 0.5}
+        )
+        
+        icon_btn = MDIconButton(
+            icon=icon,
+            theme_icon_color="Custom",
+            icon_color="white",
+            icon_size="45dp",
+            size_hint=(None, None),
+            size=("60dp", "60dp"),
+            pos_hint={'center_x': 0.5, 'center_y': 0.5}
+        )
+        icon_btn.bind(on_press=callback)
+        icon_container.add_widget(icon_btn)
+        content_layout.add_widget(icon_container)
+        
+        # Text content with proper sizing
+        text_layout = MDBoxLayout(
+            orientation='vertical', 
+            spacing="5dp",
+            size_hint_x=1,
+            adaptive_height=True,
+            pos_hint={'center_y': 0.5}
+        )
+        
+        title_label = MDLabel(
+            text=title,
+            font_style="H6",
+            theme_text_color="Custom",
+            text_color="white",
+            size_hint_y=None,
+            height="35dp",
+            text_size=(None, None),  # Allow text to size naturally
+            valign="middle"
+        )
+        text_layout.add_widget(title_label)
+        
+        subtitle_label = MDLabel(
+            text=subtitle,
+            font_style="Body2",  # Changed from Caption for better visibility
+            theme_text_color="Custom",
+            text_color="white",
+            opacity=0.9,  # Slightly less transparent
+            size_hint_y=None,
+            height="25dp",
+            text_size=(None, None),  # Allow text to size naturally
+            valign="middle"
+        )
+        text_layout.add_widget(subtitle_label)
+        
+        content_layout.add_widget(text_layout)
+        card.add_widget(content_layout)
+        
+        # Make entire card clickable
+        card.bind(on_release=callback)
+        
+        return card
     
     def open_vault(self):
         self.vault_open = True
@@ -122,98 +199,122 @@ class VaultApp(App):
 
         self.main_layout.clear_widgets()
         
-        vault_layout = BoxLayout(orientation='vertical', padding=20, spacing=10)
+        # Main container
+        main_container = MDBoxLayout(orientation='vertical')
         
-        title = Label(
-            text='🔓 SECRET VAULT OPENED! 🔓',
-            font_size=32,
-            size_hint_y=0.15
-        )
-        vault_layout.add_widget(title)
-        
-        # Main vault content with buttons
-        content_layout = BoxLayout(orientation='vertical', spacing=15)
-        
-        # Photo vault button - EXISTING
-        photo_btn = Button(
-            text='📁 Hidden Photos (Click to manage)',
-            font_size=20,
+        # Title (fixed at top)
+        title = MDLabel(
+            text='High Roller Suite',
+            font_style="H4",
+            halign="center",
             size_hint_y=None,
-            height=60
+            height="60dp",
+            theme_text_color="Primary"
         )
-        photo_btn.bind(on_press=lambda x: self.show_photo_gallery())
-        content_layout.add_widget(photo_btn)
+        main_container.add_widget(title)
+        
+        # Scrollable content
+        scroll_view = MDScrollView(
+            size_hint=(1, 1),
+            do_scroll_x=False,
+            do_scroll_y=True,
+            bar_width="4dp",
+            bar_color=self.theme_cls.primary_color,
+            bar_inactive_color=self.theme_cls.primary_color,
+            effect_cls="ScrollEffect",
+            scroll_type=['bars', 'content']
+        )
+        
+        # Scrollable content container
+        scroll_content = MDBoxLayout(
+            orientation='vertical',
+            spacing="15dp",
+            size_hint_y=None,
+            adaptive_height=True,
+            padding=["20dp", "10dp", "20dp", "20dp"]  # left, top, right, bottom
+        )
+        
+        # Vault cards grid with proper spacing
+        cards_layout = MDBoxLayout(
+            orientation='vertical', 
+            spacing="12dp",  # Consistent spacing
+            size_hint_y=None,
+            adaptive_height=True
+        )
+        
+        # Photo vault card
+        photo_card = self.create_vault_card(
+            "image-multiple",
+            "Hidden Photos",
+            "Secure photo storage",
+            lambda x: self.show_photo_gallery()
+        )
+        cards_layout.add_widget(photo_card)
 
-        # Video vault button - EXISTING
-        video_btn = Button(
-            text='🎬 Hidden Videos (Click to manage)',
-            font_size=20,
-            size_hint_y=None,
-            height=60
+        # Video vault card
+        video_card = self.create_vault_card(
+            "video",
+            "Hidden Videos", 
+            "Private video collection",
+            lambda x: self.show_video_gallery()
         )
-        video_btn.bind(on_press=lambda x: self.show_video_gallery())
-        content_layout.add_widget(video_btn)
+        cards_layout.add_widget(video_card)
 
-        document_btn = Button(
-            text='📁 Documents (Click to manage)',
-            font_size=20,
-            size_hint_y=None,
-            height=60
+        # Document vault card
+        document_card = self.create_vault_card(
+            "file-document",
+            "Documents",
+            "Important files & papers",
+            lambda x: self.show_document_vault()
         )
-        document_btn.bind(on_press=lambda x: self.show_document_vault())
-        content_layout.add_widget(document_btn)
+        cards_layout.add_widget(document_card)
 
-        audio_btn = Button(
-            text='🎵 Audio Files',
-            font_size=20,
+        # Audio vault card
+        audio_card = self.create_vault_card(
+            "music",
+            "Audio Files",
+            "Private audio recordings",
+            lambda x: self.show_audio_vault()
+        )
+        cards_layout.add_widget(audio_card)
+        
+        # Recycle bin card
+        recycle_card = self.create_vault_card(
+            "delete",
+            "Recycle Bin",
+            "Restore deleted files",
+            lambda x: self.show_recycle_bin()
+        )
+        cards_layout.add_widget(recycle_card)
+        
+        # Add cards to scroll content
+        scroll_content.add_widget(cards_layout)
+        
+        # Back button (inside scroll area)
+        back_btn = MDRaisedButton(
+            text='Back to Game',
             size_hint_y=None,
-            height=60
+            height="50dp",
+            size_hint_x=None,
+            width="200dp",
+            pos_hint={'center_x': 0.5}
         )
-        audio_btn.bind(on_press=lambda x: self.show_audio_vault())
-        content_layout.add_widget(audio_btn)
-        
-        # NEW: Recycle bin button - ADD THIS ENTIRE SECTION
-        recycle_btn = Button(
-            text='🗑️ Recycle Bin (Restore deleted files)',
-            font_size=20,
-            size_hint_y=None,
-            height=60,
-            background_color=(0.8, 0.6, 0.2, 1)  # Orange color to stand out
-        )
-        recycle_btn.bind(on_press=lambda x: self.show_recycle_bin())
-        content_layout.add_widget(recycle_btn)
-        
-        # Other vault sections (existing) - KEEP AS IS
-        other_content = Label(
-            text='''📝 Secure Notes (7 notes)  
-    🔐 Password Manager (15 accounts)
-    📄 Private Documents (12 files)
-    💰 Financial Records (5 files)
-
-    [These features coming soon...]
-            ''',
-            font_size=16,
-            text_size=(None, None),
-            halign='center'
-        )
-        content_layout.add_widget(other_content)
-        
-        vault_layout.add_widget(content_layout)
-        
-        # Back button - EXISTING
-        back_btn = Button(text='Back to Game', font_size=18, size_hint_y=0.1)
         back_btn.bind(on_press=self.back_to_game)
-        vault_layout.add_widget(back_btn)
+        scroll_content.add_widget(back_btn)
         
-        self.main_layout.add_widget(vault_layout)
-        
-        # Status label - EXISTING
-        self.status_label = Label(
-            text='Status: VAULT OPEN - Your files are secure',
-            font_size=14,
-            size_hint_y=0.05
+        # Add some extra spacing at bottom
+        bottom_spacer = MDLabel(
+            text="",
+            size_hint_y=None,
+            height="20dp"
         )
-        self.main_layout.add_widget(self.status_label)
+        scroll_content.add_widget(bottom_spacer)
+        
+        # Add scroll content to scroll view
+        scroll_view.add_widget(scroll_content)
+        main_container.add_widget(scroll_view)
+        
+        self.main_layout.add_widget(main_container)
         
         if ANDROID:
             try:
@@ -240,24 +341,17 @@ class VaultApp(App):
         self.game_widget = GameWidget()
         self.main_layout.add_widget(self.game_widget)
         
-        button_layout = BoxLayout(orientation='horizontal', size_hint_y=0.1, spacing=10, padding=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=0.1, spacing=10, padding=10)
         
-        start_btn = Button(text='Start Game', font_size=18)
+        start_btn = MDRaisedButton(text='Start Game', size_hint_x=0.5)
         start_btn.bind(on_press=self.start_game)
         button_layout.add_widget(start_btn)
         
-        reset_btn = Button(text='Reset', font_size=18)
+        reset_btn = MDRaisedButton(text='Reset', size_hint_x=0.5)
         reset_btn.bind(on_press=self.reset_game)
         button_layout.add_widget(reset_btn)
         
         self.main_layout.add_widget(button_layout)
-        
-        self.status_label = Label(
-            text='Status: Ready | Secret: ↑↓↑↓↑ to open vault',
-            font_size=14,
-            size_hint_y=0.05
-        )
-        self.main_layout.add_widget(self.status_label)
 
 if __name__ == '__main__':
     VaultApp().run()
