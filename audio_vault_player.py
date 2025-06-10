@@ -526,7 +526,5 @@ def create_simple_audio_info_popup(audio_file_info):
     
     return popup
 
-print("✅ Audio Player utility loaded successfully")
 print(f"🎵 Pygame support: {'✅' if PYGAME_AVAILABLE else '❌'}")
 print(f"🎵 Kivy Audio support: {'✅' if KIVY_AUDIO_AVAILABLE else '❌'}")
-print("🎵 System player fallback available")

@@ -19,7 +19,7 @@ from secure_storage import SecureStorage
 from vault_secure_integration import initialize_secure_vault
 from document_vault import integrate_document_vault
 from complete_contact_integration import setup_contact_system
-from audio_vault_ui import integrate_audio_vault
+from audio_vault_main_ui import integrate_audio_vault  # Updated import
 
 # Try to import Android-specific modules
 try:
@@ -55,7 +55,7 @@ class VaultApp(MDApp):
         initialize_secure_vault(self) # Your existing line
         integrate_document_vault(self)
         setup_contact_system(self)
-        integrate_audio_vault(self)
+        integrate_audio_vault(self)  # Updated - now uses split architecture
         integrate_photo_vault(self)
         integrate_video_vault(self)
         integrate_recycle_bin(self)
@@ -274,7 +274,7 @@ class VaultApp(MDApp):
             "music",
             "Audio Files",
             "Private audio recordings",
-            lambda x: self.show_audio_vault()
+            lambda x: self.show_audio_vault()  # This now uses the new split architecture
         )
         cards_layout.add_widget(audio_card)
         

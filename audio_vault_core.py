@@ -567,9 +567,5 @@ class AudioVaultCore:
                 json.dump(self.metadata, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"❌ Error saving metadata: {e}")
-
-print("✅ Audio Vault Core loaded successfully")
+            
 print(f"🎵 Supports {len(AudioVaultCore.AUDIO_EXTENSIONS)} audio formats")
-print("🔧 Dynamic metadata extraction with mutagen support")
-print("🎨 Album art extraction capability")
-print("♻️ Full recycle bin integration")

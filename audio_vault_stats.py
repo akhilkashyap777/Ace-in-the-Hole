@@ -534,7 +534,3 @@ class AudioVaultStatsWidget(BoxLayout):
                 parent.dismiss()
                 break
             parent = parent.parent
-
-print("✅ Audio Vault Statistics widget loaded successfully")
-print("📊 Comprehensive analytics and insights for audio files")
-print("🎵 Format breakdown, size analysis, and metadata insights")
