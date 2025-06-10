@@ -19,7 +19,9 @@ from secure_storage import SecureStorage
 from vault_secure_integration import initialize_secure_vault
 from document_vault import integrate_document_vault
 from complete_contact_integration import setup_contact_system
-from audio_vault_main_ui import integrate_audio_vault  # Updated import
+from audio_vault_main_ui import integrate_audio_vault
+from password_manager import PasswordManager
+from password_ui import GamePasswordUI
 
 # Try to import Android-specific modules
 try:
@@ -38,6 +40,10 @@ class VaultApp(MDApp):
         self.vault_open = False
         self.current_screen = 'game'
         
+        # Initialize password system
+        self.password_manager = PasswordManager("SecretVault")
+        self.password_ui = GamePasswordUI(self)
+        
     def build(self):
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "BlueGray"
@@ -52,10 +58,10 @@ class VaultApp(MDApp):
         self.secure_storage = SecureStorage("SecretVault")
         print(f"🔒 Secure storage: {self.secure_storage.get_storage_info()['base_directory']}")
         
-        initialize_secure_vault(self) # Your existing line
+        initialize_secure_vault(self)
         integrate_document_vault(self)
         setup_contact_system(self)
-        integrate_audio_vault(self)  # Updated - now uses split architecture
+        integrate_audio_vault(self)
         integrate_photo_vault(self)
         integrate_video_vault(self)
         integrate_recycle_bin(self)
@@ -94,11 +100,18 @@ class VaultApp(MDApp):
                 self.volume_pattern.pop(0)
             
             if self.volume_pattern == self.target_pattern:
-                self.open_vault()
+                self.request_vault_access()
             
             return True
         
         return False
+    
+    def request_vault_access(self):
+        """Handle vault access request - shows password prompt"""
+        if self.password_manager.is_first_launch():
+            self.password_ui.show_first_setup()
+        else:
+            self.password_ui.show_password_prompt()
     
     def start_game(self, instance):
         self.game_widget.start_game()
@@ -113,14 +126,14 @@ class VaultApp(MDApp):
         card = MDCard(
             orientation='vertical',
             size_hint_y=None,
-            height="120dp",  # Increased height to accommodate content
-            size_hint_x=1,   # Full width
-            padding="15dp",  # Increased padding
+            height="120dp",
+            size_hint_x=1,
+            padding="15dp",
             spacing="8dp",
             elevation=4,
-            radius=[8, 8, 8, 8],  # Reduced radius for more rectangular look
+            radius=[8, 8, 8, 8],
             md_bg_color=self.theme_cls.primary_color,
-            ripple_behavior=True  # Add ripple effect for better UX
+            ripple_behavior=True
         )
         
         content_layout = MDBoxLayout(
@@ -167,20 +180,20 @@ class VaultApp(MDApp):
             text_color="white",
             size_hint_y=None,
             height="35dp",
-            text_size=(None, None),  # Allow text to size naturally
+            text_size=(None, None),
             valign="middle"
         )
         text_layout.add_widget(title_label)
         
         subtitle_label = MDLabel(
             text=subtitle,
-            font_style="Body2",  # Changed from Caption for better visibility
+            font_style="Body2",
             theme_text_color="Custom",
             text_color="white",
-            opacity=0.9,  # Slightly less transparent
+            opacity=0.9,
             size_hint_y=None,
             height="25dp",
-            text_size=(None, None),  # Allow text to size naturally
+            text_size=(None, None),
             valign="middle"
         )
         text_layout.add_widget(subtitle_label)
@@ -194,6 +207,7 @@ class VaultApp(MDApp):
         return card
     
     def open_vault(self):
+        """Show the actual vault interface after successful authentication"""
         self.vault_open = True
         self.current_screen = 'vault_main'
 
@@ -231,13 +245,13 @@ class VaultApp(MDApp):
             spacing="15dp",
             size_hint_y=None,
             adaptive_height=True,
-            padding=["20dp", "10dp", "20dp", "20dp"]  # left, top, right, bottom
+            padding=["20dp", "10dp", "20dp", "20dp"]
         )
         
         # Vault cards grid with proper spacing
         cards_layout = MDBoxLayout(
             orientation='vertical', 
-            spacing="12dp",  # Consistent spacing
+            spacing="12dp",
             size_hint_y=None,
             adaptive_height=True
         )
@@ -274,7 +288,7 @@ class VaultApp(MDApp):
             "music",
             "Audio Files",
             "Private audio recordings",
-            lambda x: self.show_audio_vault()  # This now uses the new split architecture
+            lambda x: self.show_audio_vault()
         )
         cards_layout.add_widget(audio_card)
         
