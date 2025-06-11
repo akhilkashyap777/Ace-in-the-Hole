@@ -1,12 +1,13 @@
 import os
 import re
 import io
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.label import MDLabel
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
-from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.metrics import dp
@@ -14,12 +15,12 @@ from kivy.core.image import Image as CoreImage
 from kivy.graphics.texture import Texture
 from PIL import Image as PILImage
 
-class PhotoGalleryWidget(BoxLayout):
+class PhotoGalleryWidget(MDBoxLayout):
     """
-    Photo Gallery UI Widget
+    Photo Gallery UI Widget with BlueGray theme
     
     Features:
-    - Grid-based photo display
+    - Grid-based photo display with modern cards
     - Photo selection and viewing
     - Export functionality with folder selection
     - Recycle bin integration
@@ -31,6 +32,9 @@ class PhotoGalleryWidget(BoxLayout):
         self.vault_core = photo_vault_core
         self.selected_photo = None
         self.photo_widgets = []  # Keep track of photo widgets for cleanup
+        
+        # Set BlueGray background
+        self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
         self.build_ui()
         
@@ -50,51 +54,118 @@ class PhotoGalleryWidget(BoxLayout):
     
     def build_header(self):
         """Build header with title and add button"""
-        header = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), padding=10)
+        header = MDBoxLayout(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(120),
+            padding=[20, 20, 20, 10],
+            spacing=10
+        )
         
-        title = Label(text='🖼️ Secret Photos', font_size=24, size_hint_x=0.7)
+        # Large title
+        title = MDLabel(
+            text='PHOTO GALLERY',
+            font_style="H3",
+            text_color="white",
+            halign="center",
+            bold=True
+        )
         header.add_widget(title)
         
-        self.add_btn = Button(text='+ Add Photos', font_size=16, size_hint_x=0.3)
-        self.add_btn.bind(on_press=self.add_photos)
-        header.add_widget(self.add_btn)
+        # Action buttons row
+        actions_row = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(40),
+            spacing=15
+        )
         
+        self.add_btn = MDRaisedButton(
+            text='📷 Add Photos',
+            md_bg_color=[0.2, 0.7, 0.3, 1],
+            text_color="white",
+            size_hint_x=1,
+            elevation=3
+        )
+        self.add_btn.bind(on_press=self.add_photos)
+        actions_row.add_widget(self.add_btn)
+        
+        header.add_widget(actions_row)
         self.add_widget(header)
     
     def build_photo_grid(self):
         """Build scrollable photo grid"""
-        scroll = ScrollView()
-        self.photo_grid = GridLayout(cols=2, spacing=10, padding=10, size_hint_y=None)
-        self.photo_grid.bind(minimum_height=self.photo_grid.setter('height'))
+        scroll = MDScrollView(
+            bar_width=dp(4),
+            bar_color=[0.46, 0.53, 0.6, 0.7],
+            bar_inactive_color=[0.7, 0.7, 0.7, 0.3],
+            effect_cls="ScrollEffect"
+        )
+        
+        self.photo_grid = MDGridLayout(
+            cols=2, 
+            spacing=15, 
+            padding=[20, 10, 20, 10],
+            size_hint_y=None,
+            adaptive_height=True
+        )
         
         scroll.add_widget(self.photo_grid)
         self.add_widget(scroll)
     
     def build_bottom_buttons(self):
         """Build bottom action buttons"""
-        bottom_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), padding=10)
+        bottom_bar = MDCard(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(70),
+            padding=15,
+            spacing=12,
+            elevation=8,
+            md_bg_color=[0.25, 0.29, 0.31, 1]  # BlueGray dark
+        )
         
-        self.refresh_btn = Button(text='🔄 Refresh', size_hint_x=0.2)
+        self.refresh_btn = MDFlatButton(
+            text='🔄 Refresh',
+            text_color="white",
+            size_hint_x=0.2
+        )
         self.refresh_btn.bind(on_press=self.refresh_gallery)
-        bottom_layout.add_widget(self.refresh_btn)
+        bottom_bar.add_widget(self.refresh_btn)
         
-        self.export_btn = Button(text='📤 Export', size_hint_x=0.2)
-        self.export_btn.bind(on_press=self.export_selected_photo)
-        bottom_layout.add_widget(self.export_btn)
-        
-        self.delete_btn = Button(text='🗑️ Delete', size_hint_x=0.2)
-        self.delete_btn.bind(on_press=self.delete_selected)
-        bottom_layout.add_widget(self.delete_btn)
-        
-        self.view_btn = Button(text='👁️ View', size_hint_x=0.2)
+        self.view_btn = MDFlatButton(
+            text='👁️ View',
+            text_color=[0.4, 0.8, 0.9, 1],
+            size_hint_x=0.2
+        )
         self.view_btn.bind(on_press=self.view_selected_photo)
-        bottom_layout.add_widget(self.view_btn)
+        bottom_bar.add_widget(self.view_btn)
         
-        self.back_btn = Button(text='⬅️ Back', size_hint_x=0.2)
+        self.export_btn = MDFlatButton(
+            text='📤 Export',
+            text_color=[0.6, 0.6, 0.9, 1],
+            size_hint_x=0.2
+        )
+        self.export_btn.bind(on_press=self.export_selected_photo)
+        bottom_bar.add_widget(self.export_btn)
+        
+        self.delete_btn = MDFlatButton(
+            text='🗑️ Delete',
+            text_color=[0.9, 0.4, 0.4, 1],
+            size_hint_x=0.2
+        )
+        self.delete_btn.bind(on_press=self.delete_selected)
+        bottom_bar.add_widget(self.delete_btn)
+        
+        self.back_btn = MDFlatButton(
+            text='← Back',
+            text_color=[0.7, 0.7, 0.7, 1],
+            size_hint_x=0.2
+        )
         self.back_btn.bind(on_press=self.back_to_vault)
-        bottom_layout.add_widget(self.back_btn)
+        bottom_bar.add_widget(self.back_btn)
         
-        self.add_widget(bottom_layout)
+        self.add_widget(bottom_bar)
     
     def add_photos(self, instance):
         """Handle add photos button press"""
@@ -110,7 +181,7 @@ class PhotoGalleryWidget(BoxLayout):
         def on_photos_added(imported_files, skipped_files):
             # Re-enable button
             self.add_btn.disabled = False
-            self.add_btn.text = '+ Add Photos'
+            self.add_btn.text = '📷 Add Photos'
             
             # Show results
             self.show_import_results(imported_files, skipped_files)
@@ -123,12 +194,17 @@ class PhotoGalleryWidget(BoxLayout):
     
     def show_import_results(self, imported_files, skipped_files):
         """Show import results popup"""
-        content = BoxLayout(orientation='vertical', spacing=10)
+        content = MDBoxLayout(orientation='vertical', spacing=15, padding=15)
         
         # Success message
         if imported_files:
             success_text = f"✅ Successfully imported {len(imported_files)} photo(s) to vault!"
-            success_label = Label(text=success_text, halign='center')
+            success_label = MDLabel(
+                text=success_text, 
+                halign='center',
+                text_color="white",
+                font_style="Body1"
+            )
             content.add_widget(success_label)
         
         # Skipped files message
@@ -140,16 +216,32 @@ class PhotoGalleryWidget(BoxLayout):
             if len(skipped_files) > 3:
                 skipped_text += f"... and {len(skipped_files) - 3} more"
             
-            skipped_label = Label(text=skipped_text, halign='center')
+            skipped_label = MDLabel(
+                text=skipped_text, 
+                halign='center',
+                text_color=[1, 0.8, 0, 1],  # Orange warning
+                font_style="Body2"
+            )
             content.add_widget(skipped_label)
         
         # If no files imported
         if not imported_files and not skipped_files:
-            no_files_label = Label(text="No files were selected or imported.")
+            no_files_label = MDLabel(
+                text="No files were selected or imported.",
+                text_color=[0.7, 0.7, 0.7, 1],
+                halign='center'
+            )
             content.add_widget(no_files_label)
         
         # Close button
-        close_btn = Button(text='OK', size_hint_y=None, height=dp(40))
+        close_btn = MDRaisedButton(
+            text='OK', 
+            size_hint_y=None, 
+            height=dp(50),
+            md_bg_color=[0.46, 0.53, 0.6, 1],
+            text_color="white",
+            elevation=2
+        )
         content.add_widget(close_btn)
         
         popup = Popup(
@@ -162,7 +254,7 @@ class PhotoGalleryWidget(BoxLayout):
         close_btn.bind(on_press=popup.dismiss)
         popup.open()
         
-        # Auto-dismiss after 5 seconds if successful and no skipped files
+        # Auto-dismiss after 3 seconds if successful and no skipped files
         if imported_files and not skipped_files:
             Clock.schedule_once(lambda dt: popup.dismiss(), 3)
     
@@ -177,16 +269,35 @@ class PhotoGalleryWidget(BoxLayout):
         
         if not photos:
             # Show empty state
-            empty_label = Label(
-                text='No photos in vault\nTap "Add Photos" to get started',
-                font_size=18,
-                halign='center'
-            )
-            self.photo_grid.add_widget(empty_label)
+            empty_widget = self.create_empty_state_widget()
+            self.photo_grid.add_widget(empty_widget)
             return
         
         # Load photos in batches to avoid memory issues
         self.load_photos_batch(photos, 0)
+    
+    def create_empty_state_widget(self):
+        """Create empty state widget"""
+        empty_card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(200),
+            padding=30,
+            spacing=20,
+            md_bg_color=[0.31, 0.35, 0.39, 0.8],  # BlueGray light
+            elevation=2
+        )
+        
+        empty_label = MDLabel(
+            text='📷 No photos in vault\n\nTap "Add Photos" to import your images\nfrom gallery and keep them secure',
+            font_style="Body1",
+            halign='center',
+            text_color=[0.7, 0.7, 0.7, 1]
+        )
+        empty_label.bind(size=empty_label.setter('text_size'))
+        empty_card.add_widget(empty_label)
+        
+        return empty_card
     
     def load_photos_batch(self, photos, start_index, batch_size=6):
         """Load photos in batches to prevent memory issues"""
@@ -216,51 +327,77 @@ class PhotoGalleryWidget(BoxLayout):
     
     def create_photo_widget(self, photo_path):
         """Create a widget for displaying a photo thumbnail"""
-        layout = BoxLayout(orientation='vertical', size_hint_y=None, height=dp(200))
+        # Main card container
+        photo_card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(220),
+            padding=10,
+            spacing=8,
+            elevation=3,
+            md_bg_color=[0.31, 0.35, 0.39, 0.9],  # BlueGray card
+            ripple_behavior=True
+        )
         
-        # Create image button with error handling
+        # Create image container with error handling
+        img_container = MDBoxLayout(size_hint_y=0.8)
+        
         try:
             img = Image(
                 source=photo_path,
-                size_hint_y=0.8,
-                fit_mode="contain"
+                fit_mode="cover"
             )
-            
-            # Make it clickable with overlay button
-            btn_layout = BoxLayout()
-            btn_layout.add_widget(img)
-            
-            btn = Button(
-                size_hint_y=0.8,
-                background_color=(0, 0, 0, 0),  # Transparent
-                text=''
-            )
-            btn.bind(on_press=lambda x: self.select_photo(photo_path))
-            btn_layout.add_widget(btn)
-            
-            layout.add_widget(btn_layout)
+            img_container.add_widget(img)
             
         except Exception as e:
             print(f"Error loading image {photo_path}: {e}")
             # Fallback if image can't be loaded
-            error_btn = Button(
+            error_label = MDLabel(
                 text='📷\nImage Error',
-                size_hint_y=0.8
+                halign='center',
+                text_color=[0.7, 0.7, 0.7, 1],
+                font_style="Body2"
             )
-            error_btn.bind(on_press=lambda x: self.select_photo(photo_path))
-            layout.add_widget(error_btn)
+            img_container.add_widget(error_label)
         
-        # Photo info
-        filename = os.path.basename(photo_path)
-        display_name = filename[:20] + '...' if len(filename) > 20 else filename
-        info_label = Label(
-            text=display_name,
+        photo_card.add_widget(img_container)
+        
+        # Photo info and button
+        info_layout = MDBoxLayout(
+            orientation='horizontal',
             size_hint_y=0.2,
-            font_size=12
+            spacing=5
         )
-        layout.add_widget(info_label)
         
-        return layout
+        # Photo filename
+        filename = os.path.basename(photo_path)
+        display_name = filename[:15] + '...' if len(filename) > 15 else filename
+        
+        info_label = MDLabel(
+            text=display_name,
+            font_style="Caption",
+            text_color="white",
+            size_hint_x=0.7
+        )
+        info_layout.add_widget(info_label)
+        
+        # Select button
+        select_btn = MDRaisedButton(
+            text='📋',
+            size_hint_x=0.3,
+            md_bg_color=[0.2, 0.6, 0.8, 1],
+            text_color="white",
+            elevation=2
+        )
+        select_btn.bind(on_press=lambda x: self.select_photo(photo_path))
+        info_layout.add_widget(select_btn)
+        
+        photo_card.add_widget(info_layout)
+        
+        # Make entire card clickable
+        photo_card.bind(on_release=lambda x: self.select_photo(photo_path))
+        
+        return photo_card
     
     def select_photo(self, photo_path):
         """Select a photo for operations"""
@@ -275,8 +412,10 @@ class PhotoGalleryWidget(BoxLayout):
             original_name = vault_filename
         
         # Show selection feedback
-        content = Label(
-            text=f"Selected: {original_name}\n\nUse the buttons below to view, export, or delete this photo."
+        content = MDLabel(
+            text=f"Selected: {original_name}\n\nUse the buttons below to view, export, or delete this photo.",
+            text_color="white",
+            halign='center'
         )
         
         popup = Popup(
@@ -298,7 +437,7 @@ class PhotoGalleryWidget(BoxLayout):
     
     def view_photo(self, photo_path):
         """View a photo in full screen"""
-        content = BoxLayout(orientation='vertical')
+        content = MDBoxLayout(orientation='vertical', spacing=10)
         
         # Full size image
         try:
@@ -309,19 +448,34 @@ class PhotoGalleryWidget(BoxLayout):
             content.add_widget(img)
         except Exception as e:
             print(f"Error loading full image: {e}")
-            error_label = Label(text='Error loading image')
+            error_label = MDLabel(
+                text='Error loading image',
+                text_color="white",
+                halign='center'
+            )
             content.add_widget(error_label)
         
         # Button layout
-        button_layout = BoxLayout(
+        button_layout = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(50),
-            spacing=10
+            height=dp(60),
+            spacing=15
         )
         
-        export_btn = Button(text='📤 Export Photo')
-        close_btn = Button(text='❌ Close')
+        export_btn = MDRaisedButton(
+            text='📤 Export Photo',
+            md_bg_color=[0.6, 0.4, 0.8, 1],
+            text_color="white",
+            elevation=3
+        )
+        
+        close_btn = MDRaisedButton(
+            text='❌ Close',
+            md_bg_color=[0.5, 0.5, 0.5, 1],
+            text_color="white",
+            elevation=2
+        )
         
         button_layout.add_widget(export_btn)
         button_layout.add_widget(close_btn)
@@ -367,17 +521,30 @@ class PhotoGalleryWidget(BoxLayout):
             original_name = vault_filename
         
         # Show initial export dialog
-        content = BoxLayout(orientation='vertical', spacing=10)
+        content = MDBoxLayout(orientation='vertical', spacing=15, padding=15)
         
-        info_label = Label(
-            text=f"Export '{original_name}' to device storage?\n\nYou will be asked to choose the destination folder."
+        info_label = MDLabel(
+            text=f"Export '{original_name}' to device storage?\n\nYou will be asked to choose the destination folder.",
+            text_color="white",
+            halign='center'
         )
         content.add_widget(info_label)
         
-        button_layout = BoxLayout(orientation='horizontal')
+        button_layout = MDBoxLayout(orientation='horizontal', spacing=10)
         
-        choose_btn = Button(text='📁 Choose Folder & Export')
-        cancel_btn = Button(text='❌ Cancel')
+        choose_btn = MDRaisedButton(
+            text='📁 Choose Folder & Export',
+            md_bg_color=[0.6, 0.4, 0.8, 1],
+            text_color="white",
+            elevation=3
+        )
+        
+        cancel_btn = MDRaisedButton(
+            text='❌ Cancel',
+            md_bg_color=[0.5, 0.5, 0.5, 1],
+            text_color="white",
+            elevation=2
+        )
         
         button_layout.add_widget(choose_btn)
         button_layout.add_widget(cancel_btn)
@@ -442,16 +609,25 @@ class PhotoGalleryWidget(BoxLayout):
 
     def show_export_result(self, message, title, is_success, retry_photo=None):
         """Show export result with optional retry"""
-        content = BoxLayout(orientation='vertical', spacing=10)
+        content = MDBoxLayout(orientation='vertical', spacing=15, padding=15)
         
-        result_label = Label(text=message)
+        result_label = MDLabel(
+            text=message,
+            text_color="white" if is_success else [1, 0.6, 0.6, 1],
+            halign='center'
+        )
         content.add_widget(result_label)
         
-        button_layout = BoxLayout(orientation='horizontal')
+        button_layout = MDBoxLayout(orientation='horizontal', spacing=10)
         
         if retry_photo and not is_success:
             # Add retry button for failures
-            retry_btn = Button(text='🔄 Try Different Folder')
+            retry_btn = MDRaisedButton(
+                text='🔄 Try Different Folder',
+                md_bg_color=[0.6, 0.4, 0.8, 1],
+                text_color="white",
+                elevation=3
+            )
             button_layout.add_widget(retry_btn)
             
             def retry_export(instance):
@@ -461,7 +637,12 @@ class PhotoGalleryWidget(BoxLayout):
             
             retry_btn.bind(on_press=retry_export)
         
-        ok_btn = Button(text='OK')
+        ok_btn = MDRaisedButton(
+            text='OK',
+            md_bg_color=[0.46, 0.53, 0.6, 1],
+            text_color="white",
+            elevation=2
+        )
         button_layout.add_widget(ok_btn)
         content.add_widget(button_layout)
         
@@ -481,7 +662,11 @@ class PhotoGalleryWidget(BoxLayout):
     
     def show_no_selection_message(self, action):
         """Show message when no photo is selected"""
-        content = Label(text=f'Please select a photo first by tapping on any image')
+        content = MDLabel(
+            text=f'Please select a photo first by tapping on any image',
+            text_color="white",
+            halign='center'
+        )
         popup = Popup(
             title=f'No Photo Selected',
             content=content,
@@ -497,22 +682,35 @@ class PhotoGalleryWidget(BoxLayout):
             self.show_no_selection_message("delete")
             return
         
-        content = BoxLayout(orientation='vertical', spacing=10)
+        content = MDBoxLayout(orientation='vertical', spacing=15, padding=15)
         
         # Get retention days from recycle bin config
         retention_days = 30  # Default
         if hasattr(self.vault_core.app, 'recycle_bin'):
             retention_days = self.vault_core.app.recycle_bin.FILE_TYPE_CONFIG['photos']['retention_days']
         
-        label = Label(
-            text=f'Move this photo to recycle bin?\n\n📁 {os.path.basename(self.selected_photo)}\n\n♻️ You can restore it within {retention_days} days\n🗑️ It will be auto-deleted after {retention_days} days\n\nThis is much safer than permanent deletion!'
+        label = MDLabel(
+            text=f'Move this photo to recycle bin?\n\n📁 {os.path.basename(self.selected_photo)}\n\n♻️ You can restore it within {retention_days} days\n🗑️ It will be auto-deleted after {retention_days} days\n\nThis is much safer than permanent deletion!',
+            text_color="white",
+            halign='center'
         )
         content.add_widget(label)
         
-        btn_layout = BoxLayout(orientation='horizontal')
+        btn_layout = MDBoxLayout(orientation='horizontal', spacing=10)
         
-        yes_btn = Button(text='🗑️ Move to Recycle Bin')
-        no_btn = Button(text='❌ Cancel')
+        yes_btn = MDRaisedButton(
+            text='🗑️ Move to Recycle Bin',
+            md_bg_color=[0.8, 0.6, 0.2, 1],  # Orange warning
+            text_color="white",
+            elevation=3
+        )
+        
+        no_btn = MDRaisedButton(
+            text='❌ Cancel',
+            md_bg_color=[0.5, 0.5, 0.5, 1],
+            text_color="white",
+            elevation=2
+        )
         
         btn_layout.add_widget(yes_btn)
         btn_layout.add_widget(no_btn)
@@ -530,8 +728,10 @@ class PhotoGalleryWidget(BoxLayout):
                 self.refresh_gallery(None)
                 popup.dismiss()
                 
-                success_content = Label(
-                    text=f'Photo moved to recycle bin successfully!\n\n♻️ You can restore it anytime from the vault menu.\n🕒 It will be kept for {retention_days} days.'
+                success_content = MDLabel(
+                    text=f'Photo moved to recycle bin successfully!\n\n♻️ You can restore it anytime from the vault menu.\n🕒 It will be kept for {retention_days} days.',
+                    text_color=[0.4, 0.8, 0.4, 1],  # Green success
+                    halign='center'
                 )
                 success_popup = Popup(
                     title='✅ Moved to Recycle Bin',
@@ -543,8 +743,10 @@ class PhotoGalleryWidget(BoxLayout):
                 Clock.schedule_once(lambda dt: success_popup.dismiss(), 3)
             else:
                 popup.dismiss()
-                error_content = Label(
-                    text='Could not move photo to recycle bin.\nPlease try again.'
+                error_content = MDLabel(
+                    text='Could not move photo to recycle bin.\nPlease try again.',
+                    text_color=[1, 0.4, 0.4, 1],  # Red error
+                    halign='center'
                 )
                 error_popup = Popup(
                     title='❌ Error',
@@ -589,8 +791,8 @@ def create_thumbnail(image_path, size=(150, 150)):
         print(f"Error creating thumbnail: {e}")
         return None
 
-print("✅ Photo Vault UI loaded successfully")
-print("🎨 Features: Grid view, selection, export, recycle bin integration")
+print("✅ Photo Vault UI loaded successfully with BlueGray theme")
+print("🎨 Features: Modern card-based grid view, selection, export, recycle bin integration")
 print("💾 Memory-efficient batch loading for large photo collections")
 print("📤 Complete export functionality with folder selection")
 print("♻️ Safe deletion with recycle bin integration")

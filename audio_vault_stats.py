@@ -1,15 +1,16 @@
 import os
 from datetime import datetime, timedelta
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.label import MDLabel
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.card import MDCard
 from kivy.uix.popup import Popup
 from kivy.clock import Clock
 from kivy.metrics import dp
 
-class AudioVaultStatsWidget(BoxLayout):
+class AudioVaultStatsWidget(MDBoxLayout):
     """
     Audio Vault Statistics Widget - Detailed analytics and insights
     """
@@ -17,6 +18,9 @@ class AudioVaultStatsWidget(BoxLayout):
     def __init__(self, audio_vault_core, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
         self.audio_vault = audio_vault_core
+        
+        # Set BlueGray background
+        self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
         # Create UI
         self.create_stats_interface()
@@ -27,19 +31,28 @@ class AudioVaultStatsWidget(BoxLayout):
     def create_stats_interface(self):
         """Create the statistics interface"""
         # Header
-        header = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), padding=10)
+        header = MDBoxLayout(
+            orientation='horizontal', 
+            size_hint_y=None, 
+            height=dp(50), 
+            padding=10
+        )
         
-        title = Label(
+        title = MDLabel(
             text='📊 Audio Vault Statistics',
-            font_size=20,
+            font_style="H5",
+            text_color="white",
+            bold=True,
             size_hint_x=0.8
         )
         header.add_widget(title)
         
-        refresh_btn = Button(
+        refresh_btn = MDRaisedButton(
             text='🔄 Refresh',
+            md_bg_color=[0.46, 0.53, 0.6, 1],
+            text_color="white",
             size_hint_x=0.2,
-            font_size=14
+            elevation=2
         )
         refresh_btn.bind(on_press=self.refresh_stats)
         header.add_widget(refresh_btn)
@@ -47,9 +60,14 @@ class AudioVaultStatsWidget(BoxLayout):
         self.add_widget(header)
         
         # Create scrollable content
-        scroll = ScrollView()
+        scroll = MDScrollView(
+            bar_width=dp(4),
+            bar_color=[0.46, 0.53, 0.6, 0.7],
+            bar_inactive_color=[0.7, 0.7, 0.7, 0.3],
+            effect_cls="ScrollEffect"
+        )
         
-        self.stats_layout = BoxLayout(
+        self.stats_layout = MDBoxLayout(
             orientation='vertical',
             spacing=15,
             padding=15,
@@ -61,11 +79,13 @@ class AudioVaultStatsWidget(BoxLayout):
         self.add_widget(scroll)
         
         # Close button
-        close_btn = Button(
+        close_btn = MDRaisedButton(
             text='❌ Close',
+            md_bg_color=[0.5, 0.5, 0.5, 1],
+            text_color="white",
             size_hint_y=None,
             height=dp(50),
-            background_color=(0.5, 0.5, 0.5, 1)
+            elevation=3
         )
         close_btn.bind(on_press=self.close_stats)
         self.add_widget(close_btn)
@@ -88,7 +108,7 @@ class AudioVaultStatsWidget(BoxLayout):
     
     def create_overview_section(self, stats):
         """Create overview statistics section"""
-        section = self.create_section_widget("📊 Overview", (0.2, 0.6, 0.8, 1))
+        section = self.create_section_widget("📊 Overview", [0.2, 0.6, 0.8, 1])
         
         # Format duration nicely
         total_minutes = stats['total_duration_minutes']
@@ -116,9 +136,10 @@ class AudioVaultStatsWidget(BoxLayout):
 📊 Average File Size: {avg_size:.1f} MB
 ⏱️ Average Duration: {avg_duration:.1f} minutes"""
         
-        overview_label = Label(
+        overview_label = MDLabel(
             text=overview_text,
-            font_size=14,
+            font_style="Body1",
+            text_color="white",
             halign='left',
             size_hint_y=None,
             height=dp(160)
@@ -130,7 +151,7 @@ class AudioVaultStatsWidget(BoxLayout):
     
     def create_format_breakdown_section(self, stats):
         """Create format breakdown section"""
-        section = self.create_section_widget("🎵 Format Breakdown", (0.6, 0.4, 0.8, 1))
+        section = self.create_section_widget("🎵 Format Breakdown", [0.6, 0.4, 0.8, 1])
         
         if stats['formats']:
             # Sort formats by count
@@ -141,9 +162,10 @@ class AudioVaultStatsWidget(BoxLayout):
                 percentage = (count / stats['total_files']) * 100
                 format_text += f"• {format_name}: {count} files ({percentage:.1f}%)\n"
             
-            format_label = Label(
+            format_label = MDLabel(
                 text=format_text,
-                font_size=13,
+                font_style="Body2",
+                text_color="white",
                 halign='left',
                 size_hint_y=None,
                 height=dp(len(sorted_formats) * 25 + 20)
@@ -151,9 +173,10 @@ class AudioVaultStatsWidget(BoxLayout):
             format_label.bind(size=format_label.setter('text_size'))
             section.add_widget(format_label)
         else:
-            empty_label = Label(
+            empty_label = MDLabel(
                 text="No audio files in vault",
-                font_size=14,
+                font_style="Body1",
+                text_color=[0.7, 0.7, 0.7, 1],
                 size_hint_y=None,
                 height=dp(40)
             )
@@ -163,15 +186,16 @@ class AudioVaultStatsWidget(BoxLayout):
     
     def create_size_analysis_section(self):
         """Create size analysis section"""
-        section = self.create_section_widget("📊 Size Analysis", (0.8, 0.6, 0.2, 1))
+        section = self.create_section_widget("📊 Size Analysis", [0.8, 0.6, 0.2, 1])
         
         try:
             files = self.audio_vault.get_audio_files()
             
             if not files:
-                empty_label = Label(
+                empty_label = MDLabel(
                     text="No files to analyze",
-                    font_size=14,
+                    font_style="Body1",
+                    text_color=[0.7, 0.7, 0.7, 1],
                     size_hint_y=None,
                     height=dp(40)
                 )
@@ -215,9 +239,10 @@ class AudioVaultStatsWidget(BoxLayout):
             if largest_file:
                 size_text += f"\n🏆 Largest File:\n{largest_file['display_name']}\n({largest_size:.1f} MB)"
             
-            size_label = Label(
+            size_label = MDLabel(
                 text=size_text,
-                font_size=13,
+                font_style="Body2",
+                text_color="white",
                 halign='left',
                 size_hint_y=None,
                 height=dp(200)
@@ -226,9 +251,10 @@ class AudioVaultStatsWidget(BoxLayout):
             section.add_widget(size_label)
             
         except Exception as e:
-            error_label = Label(
+            error_label = MDLabel(
                 text=f"Error analyzing sizes: {str(e)}",
-                font_size=12,
+                font_style="Caption",
+                text_color=[1, 0.4, 0.4, 1],
                 size_hint_y=None,
                 height=dp(40)
             )
@@ -238,15 +264,16 @@ class AudioVaultStatsWidget(BoxLayout):
     
     def create_duration_analysis_section(self):
         """Create duration analysis section"""
-        section = self.create_section_widget("⏱️ Duration Analysis", (0.4, 0.8, 0.6, 1))
+        section = self.create_section_widget("⏱️ Duration Analysis", [0.4, 0.8, 0.6, 1])
         
         try:
             files = self.audio_vault.get_audio_files()
             
             if not files:
-                empty_label = Label(
+                empty_label = MDLabel(
                     text="No files to analyze",
-                    font_size=14,
+                    font_style="Body1",
+                    text_color=[0.7, 0.7, 0.7, 1],
                     size_hint_y=None,
                     height=dp(40)
                 )
@@ -308,9 +335,10 @@ class AudioVaultStatsWidget(BoxLayout):
                 
                 duration_text += f"\n🏆 Longest File:\n{longest_file['display_name']}\n({longest_str})"
             
-            duration_label = Label(
+            duration_label = MDLabel(
                 text=duration_text,
-                font_size=13,
+                font_style="Body2",
+                text_color="white",
                 halign='left',
                 size_hint_y=None,
                 height=dp(220)
@@ -319,9 +347,10 @@ class AudioVaultStatsWidget(BoxLayout):
             section.add_widget(duration_label)
             
         except Exception as e:
-            error_label = Label(
+            error_label = MDLabel(
                 text=f"Error analyzing durations: {str(e)}",
-                font_size=12,
+                font_style="Caption",
+                text_color=[1, 0.4, 0.4, 1],
                 size_hint_y=None,
                 height=dp(40)
             )
@@ -331,15 +360,16 @@ class AudioVaultStatsWidget(BoxLayout):
     
     def create_recent_activity_section(self):
         """Create recent activity section"""
-        section = self.create_section_widget("📅 Recent Activity", (0.2, 0.8, 0.4, 1))
+        section = self.create_section_widget("📅 Recent Activity", [0.2, 0.8, 0.4, 1])
         
         try:
             files = self.audio_vault.get_audio_files(sort_by='added_date')
             
             if not files:
-                empty_label = Label(
+                empty_label = MDLabel(
                     text="No recent activity",
-                    font_size=14,
+                    font_style="Body1",
+                    text_color=[0.7, 0.7, 0.7, 1],
                     size_hint_y=None,
                     height=dp(40)
                 )
@@ -390,9 +420,10 @@ class AudioVaultStatsWidget(BoxLayout):
                         filename = filename[:22] + "..."
                     activity_text += f"• {date_str}: {filename}\n"
             
-            activity_label = Label(
+            activity_label = MDLabel(
                 text=activity_text,
-                font_size=12,
+                font_style="Caption",
+                text_color="white",
                 halign='left',
                 size_hint_y=None,
                 height=dp(max(200, len(recent_files) * 20 + 120))
@@ -401,9 +432,10 @@ class AudioVaultStatsWidget(BoxLayout):
             section.add_widget(activity_label)
             
         except Exception as e:
-            error_label = Label(
+            error_label = MDLabel(
                 text=f"Error analyzing activity: {str(e)}",
-                font_size=12,
+                font_style="Caption",
+                text_color=[1, 0.4, 0.4, 1],
                 size_hint_y=None,
                 height=dp(40)
             )
@@ -413,15 +445,16 @@ class AudioVaultStatsWidget(BoxLayout):
     
     def create_metadata_insights_section(self):
         """Create dynamic metadata insights section"""
-        section = self.create_section_widget("🎨 Metadata Insights", (0.8, 0.4, 0.6, 1))
+        section = self.create_section_widget("🎨 Metadata Insights", [0.8, 0.4, 0.6, 1])
         
         try:
             files = self.audio_vault.get_audio_files()
             
             if not files:
-                empty_label = Label(
+                empty_label = MDLabel(
                     text="No metadata to analyze",
-                    font_size=14,
+                    font_style="Body1",
+                    text_color=[0.7, 0.7, 0.7, 1],
                     size_hint_y=None,
                     height=dp(40)
                 )
@@ -479,9 +512,10 @@ class AudioVaultStatsWidget(BoxLayout):
             content_lines = metadata_text.count('\n') + 2
             calculated_height = max(200, content_lines * 20)
             
-            metadata_label = Label(
+            metadata_label = MDLabel(
                 text=metadata_text,
-                font_size=12,
+                font_style="Caption",
+                text_color="white",
                 halign='left',
                 size_hint_y=None,
                 height=dp(calculated_height)
@@ -490,9 +524,10 @@ class AudioVaultStatsWidget(BoxLayout):
             section.add_widget(metadata_label)
             
         except Exception as e:
-            error_label = Label(
+            error_label = MDLabel(
                 text=f"Error analyzing metadata: {str(e)}",
-                font_size=12,
+                font_style="Caption",
+                text_color=[1, 0.4, 0.4, 1],
                 size_hint_y=None,
                 height=dp(40)
             )
@@ -501,22 +536,25 @@ class AudioVaultStatsWidget(BoxLayout):
         self.stats_layout.add_widget(section)
     
     def create_section_widget(self, title, color):
-        """Create a styled section widget"""
-        section = BoxLayout(
+        """Create a styled section widget with BlueGray theme"""
+        section = MDCard(
             orientation='vertical',
             size_hint_y=None,
-            spacing=5,
-            padding=10
+            spacing=10,
+            padding=15,
+            elevation=3,
+            md_bg_color=[0.31, 0.35, 0.39, 0.9],  # BlueGray card background
+            radius=[8, 8, 8, 8]
         )
         
         # Section header
-        header = Label(
+        header = MDLabel(
             text=title,
-            font_size=16,
+            font_style="H6",
+            text_color=color,
             bold=True,
             size_hint_y=None,
-            height=dp(30),
-            color=color
+            height=dp(35)
         )
         section.add_widget(header)
         

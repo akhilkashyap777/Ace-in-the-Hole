@@ -1,17 +1,19 @@
 import os
 import threading
 from datetime import datetime
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.scrollview import ScrollView
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDRaisedButton, MDIconButton, MDFlatButton
+from kivymd.uix.label import MDLabel
+from kivymd.uix.textfield import MDTextField
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.card import MDCard
+from kivymd.uix.menu import MDDropdownMenu
 from kivy.uix.popup import Popup
-from kivy.uix.spinner import Spinner
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.graphics import Color, RoundedRectangle
 
 from audio_vault_dialogs import (
     show_add_audio_dialog,
@@ -21,7 +23,7 @@ from audio_vault_dialogs import (
     show_no_selection_popup
 )
 
-class AudioVaultWidget(BoxLayout):
+class AudioVaultWidget(MDBoxLayout):
     
     def __init__(self, audio_vault_core, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
@@ -29,163 +31,252 @@ class AudioVaultWidget(BoxLayout):
         self.selected_audio = None
         self.current_sort = 'added_date'
         
+        # Set dark gradient background
+        self.md_bg_color = [0.37, 0.49, 0.55, 1]
+        
         self.create_header()
-        self.create_controls()
+        self.create_search_section()
         self.create_stats_section()
         self.create_audio_grid()
-        self.create_bottom_buttons()
+        self.create_bottom_bar()
         
         Clock.schedule_once(lambda dt: self.refresh_audio_vault(), 0.1)
     
     def create_header(self):
-        header = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), padding=10)
+        """Create large title header"""
+        header = MDBoxLayout(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(120),
+            padding=[20, 20, 20, 10],
+            spacing=10
+        )
         
-        title = Label(
-            text='🎵 Audio Files',
-            font_size=24,
-            size_hint_x=0.6
+        # Large title
+        title = MDLabel(
+            text='AUDIO FILES',
+            font_style="H3",
+            text_color="white",
+            halign="center",
+            bold=True
         )
         header.add_widget(title)
         
-        actions_layout = BoxLayout(orientation='horizontal', size_hint_x=0.4, spacing=5)
+        # Action buttons row
+        actions_row = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(40),
+            spacing=15
+        )
         
-        self.add_btn = Button(
+        self.add_btn = MDRaisedButton(
             text='➕ Add Audio',
-            font_size=14,
+            md_bg_color=[0.2, 0.7, 0.3, 1],
+            text_color="white",
             size_hint_x=0.5,
-            background_color=(0.2, 0.7, 0.2, 1)
+            elevation=3
         )
         self.add_btn.bind(on_press=self.handle_add_audio)
-        actions_layout.add_widget(self.add_btn)
+        actions_row.add_widget(self.add_btn)
         
-        self.stats_btn = Button(
+        self.stats_btn = MDRaisedButton(
             text='📊 Stats',
-            font_size=14,
-            size_hint_x=0.5
+            md_bg_color=[0.38, 0.49, 0.55, 1],
+            text_color="white", 
+            size_hint_x=0.5,
+            elevation=3
         )
         self.stats_btn.bind(on_press=self.handle_show_stats)
-        actions_layout.add_widget(self.stats_btn)
+        actions_row.add_widget(self.stats_btn)
         
-        header.add_widget(actions_layout)
+        header.add_widget(actions_row)
         self.add_widget(header)
     
-    def create_controls(self):
-        controls_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), padding=10, spacing=10)
-        
-        search_layout = BoxLayout(orientation='horizontal', size_hint_x=0.6)
-        
-        search_label = Label(
-            text='🔍',
-            size_hint_x=0.1,
-            font_size=20
+    def create_search_section(self):
+        """Create search bar and sort controls"""
+        search_container = MDBoxLayout(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(100),
+            padding=[20, 10, 20, 10],
+            spacing=15
         )
-        search_layout.add_widget(search_label)
         
-        self.search_input = TextInput(
-            hint_text='Search audio files, artists, albums...',
-            size_hint_x=0.9,
-            multiline=False,
-            font_size=16
+        # Search bar
+        search_row = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(50),
+            spacing=15
+        )
+        
+        # Search input with rounded style
+        self.search_input = MDTextField(
+            hint_text='Search audio files...',
+            size_hint_x=0.75,
+            mode="round",
+            fill_color_normal=[0.26, 0.32, 0.36, 0.8],
+            text_color_normal="white",
+            hint_text_color_normal=[0.7, 0.7, 0.7, 1],
+            line_color_normal=[0.4, 0.6, 0.8, 0],
+            line_color_focus=[0.4, 0.6, 0.8, 0]
         )
         self.search_input.bind(text=self.on_search_text_change)
-        search_layout.add_widget(self.search_input)
+        search_row.add_widget(self.search_input)
         
-        controls_layout.add_widget(search_layout)
-        
-        sort_layout = BoxLayout(orientation='horizontal', size_hint_x=0.4)
-        
-        sort_label = Label(
-            text='Sort:',
-            size_hint_x=0.3,
-            font_size=16
+        # Sort button
+        self.sort_btn = MDRaisedButton(
+            text='Sort',
+            size_hint_x=0.25,
+            md_bg_color=[0.46, 0.53, 0.6, 1],
+            text_color="white",
+            elevation=2
         )
-        sort_layout.add_widget(sort_label)
+        self.sort_btn.bind(on_press=self.show_sort_menu)
+        search_row.add_widget(self.sort_btn)
         
-        self.sort_spinner = Spinner(
-            text='Recent First',
-            values=['Recent First', 'Name A-Z', 'Largest First', 'Longest First'],
-            size_hint_x=0.7,
-            font_size=14
-        )
-        self.sort_spinner.bind(text=self.on_sort_changed)
-        sort_layout.add_widget(self.sort_spinner)
+        # Create sort menu
+        if not hasattr(self, 'sort_menu'):
+            sort_menu_items = [
+                {
+                    "text": "Recent First",
+                    "viewclass": "OneLineListItem",
+                    "on_release": lambda x="Recent First": self.set_sort_option(x),
+                },
+                {
+                    "text": "Name A-Z", 
+                    "viewclass": "OneLineListItem",
+                    "on_release": lambda x="Name A-Z": self.set_sort_option(x),
+                },
+                {
+                    "text": "Largest First",
+                    "viewclass": "OneLineListItem",
+                    "on_release": lambda x="Largest First": self.set_sort_option(x),
+                },
+                {
+                    "text": "Longest First",
+                    "viewclass": "OneLineListItem", 
+                    "on_release": lambda x="Longest First": self.set_sort_option(x),
+                },
+            ]
+            
+            self.sort_menu = MDDropdownMenu(
+                caller=self.sort_btn,
+                items=sort_menu_items,
+                width_mult=3,
+            )
         
-        controls_layout.add_widget(sort_layout)
-        self.add_widget(controls_layout)
+        search_container.add_widget(search_row)
+        self.add_widget(search_container)
+    
+    def show_sort_menu(self, instance):
+        self.sort_menu.open()
+    
+    def set_sort_option(self, sort_text):
+        self.sort_btn.text = sort_text
+        self.sort_menu.dismiss()
+        
+        sort_mapping = {
+            'Recent First': 'added_date',
+            'Name A-Z': 'filename',
+            'Largest First': 'size', 
+            'Longest First': 'duration'
+        }
+        
+        self.current_sort = sort_mapping.get(sort_text, 'added_date')
+        self.refresh_audio_grid()
     
     def create_stats_section(self):
-        self.stats_layout = BoxLayout(orientation='vertical', size_hint_y=None, height=dp(60), padding=10)
-        
-        self.stats_label = Label(
+        """Create stats display"""
+        self.stats_label = MDLabel(
             text='Loading audio vault statistics...',
-            font_size=14,
-            color=(0.7, 0.7, 0.7, 1)
+            font_style="Body2",
+            text_color=[0.8, 0.8, 0.8, 1],
+            halign="center",
+            size_hint_y=None,
+            height=dp(30)
         )
-        self.stats_layout.add_widget(self.stats_label)
-        
-        self.add_widget(self.stats_layout)
+        self.add_widget(self.stats_label)
     
     def create_audio_grid(self):
-        scroll = ScrollView()
-        
-        self.audio_grid = GridLayout(
-            cols=1,
-            spacing=5,
-            padding=10,
-            size_hint_y=None
+        """Create scrollable audio files grid"""
+        scroll = MDScrollView(
+            bar_width=dp(4),
+            bar_color=[0.4, 0.6, 0.8, 0.7],
+            bar_inactive_color=[0.7, 0.7, 0.7, 0.3],
+            effect_cls="ScrollEffect"
         )
-        self.audio_grid.bind(minimum_height=self.audio_grid.setter('height'))
+        
+        self.audio_grid = MDGridLayout(
+            cols=1,
+            spacing=15,
+            padding=[20, 10, 20, 10],
+            size_hint_y=None,
+            adaptive_height=True
+        )
         
         scroll.add_widget(self.audio_grid)
         self.add_widget(scroll)
     
-    def create_bottom_buttons(self):
-        bottom_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), padding=10)
+    def create_bottom_bar(self):
+        """Create bottom action bar"""
+        bottom_bar = MDCard(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(70),
+            padding=15,
+            spacing=20,
+            elevation=8,
+            md_bg_color=[0.26, 0.32, 0.36, 1]
+        )
         
-        self.refresh_btn = Button(
+        # Refresh
+        refresh_btn = MDFlatButton(
             text='🔄 Refresh',
-            font_size=16,
+            text_color="white",
             size_hint_x=0.2
         )
-        self.refresh_btn.bind(on_press=self.refresh_audio_vault)
-        bottom_layout.add_widget(self.refresh_btn)
+        refresh_btn.bind(on_press=self.refresh_audio_vault)
+        bottom_bar.add_widget(refresh_btn)
         
-        self.play_btn = Button(
+        # Play
+        self.play_btn = MDFlatButton(
             text='▶️ Play',
-            font_size=16,
-            size_hint_x=0.2,
-            background_color=(0.2, 0.6, 0.8, 1)
+            text_color=[0.4, 0.8, 0.4, 1],
+            size_hint_x=0.2
         )
         self.play_btn.bind(on_press=self.play_selected_audio)
-        bottom_layout.add_widget(self.play_btn)
+        bottom_bar.add_widget(self.play_btn)
         
-        self.export_btn = Button(
-            text='📤 Export',
-            font_size=16,
-            size_hint_x=0.2,
-            background_color=(0.6, 0.4, 0.8, 1)
+        # Export
+        self.export_btn = MDFlatButton(
+            text='⬇ Export',
+            text_color=[0.6, 0.6, 0.9, 1],
+            size_hint_x=0.2
         )
         self.export_btn.bind(on_press=self.export_selected_audio)
-        bottom_layout.add_widget(self.export_btn)
+        bottom_bar.add_widget(self.export_btn)
         
-        self.delete_btn = Button(
-            text='🗑️ Delete',
-            font_size=16,
-            size_hint_x=0.2,
-            background_color=(0.8, 0.2, 0.2, 1)
+        # Delete
+        self.delete_btn = MDFlatButton(
+            text='🗑 Delete',
+            text_color=[0.9, 0.4, 0.4, 1],
+            size_hint_x=0.2
         )
         self.delete_btn.bind(on_press=self.delete_selected_audio)
-        bottom_layout.add_widget(self.delete_btn)
+        bottom_bar.add_widget(self.delete_btn)
         
-        self.back_btn = Button(
-            text='🔙 Back',
-            font_size=16,
+        # Back
+        self.back_btn = MDFlatButton(
+            text='← Back',
+            text_color=[0.7, 0.7, 0.7, 1],
             size_hint_x=0.2
         )
         self.back_btn.bind(on_press=self.back_to_vault)
-        bottom_layout.add_widget(self.back_btn)
+        bottom_bar.add_widget(self.back_btn)
         
-        self.add_widget(bottom_layout)
+        self.add_widget(bottom_bar)
     
     def handle_add_audio(self, instance):
         show_add_audio_dialog(self.audio_vault, self.refresh_audio_vault)
@@ -198,17 +289,6 @@ class AudioVaultWidget(BoxLayout):
             self._search_timer.cancel()
         
         self._search_timer = Clock.schedule_once(lambda dt: self.refresh_audio_grid(), 0.5)
-    
-    def on_sort_changed(self, spinner, text):
-        sort_mapping = {
-            'Recent First': 'added_date',
-            'Name A-Z': 'filename',
-            'Largest First': 'size',
-            'Longest First': 'duration'
-        }
-        
-        self.current_sort = sort_mapping.get(text, 'added_date')
-        self.refresh_audio_grid()
     
     def refresh_audio_vault(self, instance=None):
         self.update_stats()
@@ -226,16 +306,16 @@ class AudioVaultWidget(BoxLayout):
             else:
                 duration_str = f"{minutes}m"
             
-            stats_text = f"📊 {stats['total_files']} files • {stats['total_size_mb']} MB • {duration_str} total"
+            stats_text = f"{stats['total_files']} files - {stats['total_size_mb']} MB - {duration_str} total"
             
             if stats['recent_files'] > 0:
-                stats_text += f" • {stats['recent_files']} new this week"
+                stats_text += f" - {stats['recent_files']} new this week"
             
             self.stats_label.text = stats_text
             
         except Exception as e:
             print(f"Error updating stats: {e}")
-            self.stats_label.text = "❌ Error loading statistics"
+            self.stats_label.text = "Error loading statistics"
     
     def refresh_audio_grid(self):
         try:
@@ -264,45 +344,67 @@ class AudioVaultWidget(BoxLayout):
                 
         except Exception as e:
             print(f"Error refreshing audio grid: {e}")
-            error_label = Label(
-                text=f"❌ Error loading audio files: {str(e)}",
+            error_card = MDCard(
                 size_hint_y=None,
-                height=dp(50)
+                height=dp(60),
+                padding=15,
+                md_bg_color=[0.8, 0.2, 0.2, 0.3]
             )
-            self.audio_grid.add_widget(error_label)
+            error_label = MDLabel(
+                text=f"❌ Error loading audio files: {str(e)}",
+                text_color=[1, 0.4, 0.4, 1],
+                halign="center"
+            )
+            error_card.add_widget(error_label)
+            self.audio_grid.add_widget(error_card)
     
     def create_empty_state_widget(self):
-        empty_layout = BoxLayout(
+        """Create empty state with modern styling"""
+        empty_card = MDCard(
             orientation='vertical',
             size_hint_y=None,
             height=dp(200),
-            spacing=10,
-            padding=20
+            padding=30,
+            spacing=20,
+            md_bg_color=[0.37, 0.49, 0.55, 0.8],
+            elevation=2
         )
         
         search_text = f"matching '{self.search_input.text}'" if self.search_input.text else ""
         
-        empty_label = Label(
+        empty_label = MDLabel(
             text=f'🎵 No audio files found {search_text}\n\nTap "Add Audio" to import your music,\npodcasts, recordings, and other audio files.',
-            font_size=16,
-            halign='center',
-            color=(0.6, 0.6, 0.6, 1)
+            font_style="Body1",
+            halign="center",
+            text_color=[0.7, 0.7, 0.7, 1]
         )
-        empty_label.bind(size=empty_label.setter('text_size'))
-        empty_layout.add_widget(empty_label)
+        empty_card.add_widget(empty_label)
         
-        return empty_layout
+        return empty_card
     
     def create_audio_widget(self, audio_file):
-        audio_layout = BoxLayout(
+        """Create modern audio file card"""
+        is_selected = self.selected_audio and self.selected_audio['id'] == audio_file['id']
+        
+        # Main card with modern styling
+        audio_card = MDCard(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(100),
-            padding=5,
-            spacing=10
+            height=dp(90),
+            padding=15,
+            spacing=15,
+            elevation=4 if is_selected else 2,
+            md_bg_color=[0.46, 0.53, 0.6, 1] if is_selected else [0.37, 0.49, 0.55, 0.9],
+            ripple_behavior=True
         )
         
-        thumbnail_layout = BoxLayout(orientation='vertical', size_hint_x=0.15)
+        # Music note icon
+        icon_container = MDBoxLayout(
+            orientation='vertical',
+            size_hint_x=None,
+            width=dp(60),
+            padding=[5, 5]
+        )
         
         if audio_file.get('thumbnail_path') and os.path.exists(audio_file['thumbnail_path']):
             try:
@@ -311,137 +413,106 @@ class AudioVaultWidget(BoxLayout):
                     size_hint=(1, 1)
                 )
             except:
-                thumbnail = Label(text='🎵', font_size=32)
+                thumbnail = MDLabel(
+                    text='🎵',
+                    font_style="H4",
+                    halign="center",
+                    text_color="white"
+                )
         else:
-            thumbnail = Label(text='🎵', font_size=32)
+            thumbnail = MDLabel(
+                text='🎵',
+                font_style="H4", 
+                halign="center",
+                text_color="white"
+            )
         
-        thumbnail_layout.add_widget(thumbnail)
-        audio_layout.add_widget(thumbnail_layout)
+        icon_container.add_widget(thumbnail)
+        audio_card.add_widget(icon_container)
         
-        info_layout = BoxLayout(orientation='vertical', size_hint_x=0.55)
+        # File info section
+        info_layout = MDBoxLayout(
+            orientation='vertical',
+            size_hint_x=0.6,
+            spacing=5
+        )
         
-        title_row = BoxLayout(orientation='horizontal', size_hint_y=0.4)
-        
+        # Filename
         filename = audio_file['display_name']
-        if len(filename) > 35:
-            filename = filename[:32] + "..."
+        if len(filename) > 40:
+            filename = filename[:37] + "..."
         
-        title_label = Label(
+        title_label = MDLabel(
             text=filename,
-            font_size=16,
-            halign='left',
-            color=(1, 1, 1, 1),
-            bold=True
+            font_style="Subtitle1",
+            text_color="white",
+            bold=True,
+            size_hint_y=0.5
         )
-        title_label.bind(size=title_label.setter('text_size'))
-        title_row.add_widget(title_label)
+        info_layout.add_widget(title_label)
         
-        info_layout.add_widget(title_row)
+        # File details
+        size_mb = audio_file['size_mb']
+        duration_str = audio_file.get('duration_str', 'Unknown')
+        format_info = audio_file.get('format_info', 'Unknown')
         
-        metadata_row = BoxLayout(orientation='horizontal', size_hint_y=0.3)
+        details_text = f"Size: {size_mb:.1f} MB - Duration: {duration_str}"
         
-        metadata_text = ""
-        extracted_fields = audio_file.get('metadata', {}).get('extracted_fields', {})
-        
-        artist = extracted_fields.get('artist', extracted_fields.get('ARTIST', ''))
-        album = extracted_fields.get('album', extracted_fields.get('ALBUM', ''))
-        
-        if artist:
-            metadata_text += f"👤 {artist}"
-        if album:
-            if metadata_text:
-                metadata_text += f" • 💿 {album}"
-            else:
-                metadata_text += f"💿 {album}"
-        
-        if not metadata_text:
-            metadata_text = f"📁 {audio_file['format_info']}"
-        
-        metadata_label = Label(
-            text=metadata_text,
-            font_size=13,
-            halign='left',
-            color=(0.8, 0.8, 0.8, 1)
+        details_label = MDLabel(
+            text=details_text,
+            font_style="Caption",
+            text_color=[0.8, 0.8, 0.8, 1],
+            size_hint_y=0.25
         )
-        metadata_label.bind(size=metadata_label.setter('text_size'))
-        metadata_row.add_widget(metadata_label)
+        info_layout.add_widget(details_label)
         
-        info_layout.add_widget(metadata_row)
-        
-        tech_row = BoxLayout(orientation='horizontal', size_hint_y=0.3)
-        
-        tech_info = f"⏱️ {audio_file['duration_str']} • 📊 {audio_file['size_mb']:.1f} MB"
-        
-        bitrate = audio_file.get('metadata', {}).get('bitrate')
-        if bitrate:
-            tech_info += f" • 🎚️ {bitrate} kbps"
-        
-        tech_label = Label(
-            text=tech_info,
-            font_size=11,
-            halign='left',
-            color=(0.6, 0.6, 0.6, 1)
+        # Format
+        format_label = MDLabel(
+            text=format_info,
+            font_style="Caption", 
+            text_color=[0.7, 0.7, 0.7, 1],
+            size_hint_y=0.25
         )
-        tech_label.bind(size=tech_label.setter('text_size'))
-        tech_row.add_widget(tech_label)
+        info_layout.add_widget(format_label)
         
-        info_layout.add_widget(tech_row)
+        audio_card.add_widget(info_layout)
         
-        audio_layout.add_widget(info_layout)
-        
-        button_layout = BoxLayout(orientation='vertical', size_hint_x=0.3, spacing=3)
-        
-        top_buttons = BoxLayout(orientation='horizontal', size_hint_y=0.5, spacing=3)
-        
-        select_btn = Button(
-            text='📋 Select',
-            font_size=12,
-            size_hint_x=0.5
+        # Action buttons
+        button_layout = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_x=None,
+            width=dp(160),
+            spacing=10
         )
-        select_btn.bind(on_press=lambda x: self.select_audio_file(audio_file))
-        top_buttons.add_widget(select_btn)
         
-        info_btn = Button(
-            text='ℹ️ Info',
-            font_size=12,
-            size_hint_x=0.5
-        )
-        info_btn.bind(on_press=lambda x: show_audio_info_dialog(audio_file))
-        top_buttons.add_widget(info_btn)
-        
-        button_layout.add_widget(top_buttons)
-        
-        bottom_buttons = BoxLayout(orientation='horizontal', size_hint_y=0.5, spacing=3)
-        
-        play_btn = Button(
+        # Play button
+        play_btn = MDRaisedButton(
             text='▶️ Play',
-            font_size=12,
+            md_bg_color=[0.2, 0.6, 0.8, 1],
+            text_color="white",
             size_hint_x=0.5,
-            background_color=(0.2, 0.6, 0.8, 1)
+            elevation=2
         )
         play_btn.bind(on_press=lambda x: self.play_audio_file(audio_file))
-        bottom_buttons.add_widget(play_btn)
+        button_layout.add_widget(play_btn)
         
-        options_btn = Button(
-            text='⚙️ Menu',
-            font_size=12,
-            size_hint_x=0.5
+        # Info button  
+        info_btn = MDRaisedButton(
+            text='ℹ️ Info',
+            md_bg_color=[0.5, 0.5, 0.5, 1],
+            text_color="white",
+            size_hint_x=0.5,
+            elevation=2
         )
-        options_btn.bind(on_press=lambda x: show_audio_options(audio_file, self.audio_vault, self.refresh_audio_vault))
-        bottom_buttons.add_widget(options_btn)
+        info_btn.bind(on_press=lambda x: show_audio_info_dialog(audio_file))
+        button_layout.add_widget(info_btn)
         
-        button_layout.add_widget(bottom_buttons)
+        audio_card.add_widget(button_layout)
         
-        audio_layout.add_widget(button_layout)
+        # Add click to select functionality
+        audio_card.bind(on_release=lambda x: self.select_audio_file(audio_file))
         
-        if self.selected_audio and self.selected_audio['id'] == audio_file['id']:
-            audio_layout.canvas.before.clear()
-            from kivy.graphics import Color, Rectangle
-            with audio_layout.canvas.before:
-                Color(0.2, 0.6, 0.8, 0.3)
-                Rectangle(pos=audio_layout.pos, size=audio_layout.size)
-        
-        return audio_layout
+        return audio_card
     
     def select_audio_file(self, audio_file):
         self.selected_audio = audio_file
@@ -458,7 +529,7 @@ class AudioVaultWidget(BoxLayout):
             if not os.path.exists(audio_path):
                 popup = Popup(
                     title='❌ File Not Found',
-                    content=Label(text='Audio file not found on disk.'),
+                    content=MDLabel(text='Audio file not found on disk.'),
                     size_hint=(0.6, 0.3),
                     auto_dismiss=True
                 )
@@ -477,7 +548,7 @@ class AudioVaultWidget(BoxLayout):
                 
                 popup = Popup(
                     title='🎵 Opening Audio',
-                    content=Label(text=f'Opening in device audio player:\n{audio_file["display_name"]}'),
+                    content=MDLabel(text=f'Opening in device audio player:\n{audio_file["display_name"]}'),
                     size_hint=(0.7, 0.4),
                     auto_dismiss=True
                 )
@@ -487,7 +558,7 @@ class AudioVaultWidget(BoxLayout):
             except Exception as e:
                 popup = Popup(
                     title='🎵 Audio File',
-                    content=Label(text=f'Audio File: {audio_file["display_name"]}\n\nLocation: {audio_path}\n\nPlease open with your preferred audio player.'),
+                    content=MDLabel(text=f'Audio File: {audio_file["display_name"]}\n\nLocation: {audio_path}\n\nPlease open with your preferred audio player.'),
                     size_hint=(0.8, 0.5),
                     auto_dismiss=True
                 )
@@ -498,7 +569,7 @@ class AudioVaultWidget(BoxLayout):
             print(f"Error opening audio file: {e}")
             popup = Popup(
                 title='❌ Error',
-                content=Label(text=f'Could not open audio file:\n{str(e)}'),
+                content=MDLabel(text=f'Could not open audio file:\n{str(e)}'),
                 size_hint=(0.7, 0.4),
                 auto_dismiss=True
             )

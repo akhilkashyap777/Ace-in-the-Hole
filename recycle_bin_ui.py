@@ -1,20 +1,30 @@
 import os
 from datetime import datetime
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.scrollview import ScrollView
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.label import MDLabel
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.card import MDCard
 from kivy.uix.popup import Popup
 from kivy.uix.spinner import Spinner
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.graphics import Color, Rectangle
 
 from recycle_bin_core import RecycleBinCore
+from recycle_bin_dialogs import (
+    show_file_options_dialog,
+    restore_file_with_progress,
+    confirm_permanent_delete,
+    manual_cleanup_dialog,
+    confirm_empty_all_dialog,
+    show_no_selection_popup
+)
 
-class RecycleBinWidget(BoxLayout):
+class RecycleBinWidget(MDBoxLayout):
     """
-    Main Recycle Bin UI Widget - Flexible for all file types
+    Main Recycle Bin UI Widget - Flexible for all file types with BlueGray theme
     """
     
     def __init__(self, recycle_bin_core, **kwargs):
@@ -22,6 +32,9 @@ class RecycleBinWidget(BoxLayout):
         self.recycle_bin = recycle_bin_core
         self.selected_file = None
         self.current_filter = 'all'  # Current file type filter
+        
+        # Set BlueGray background
+        self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
         # Create UI
         self.create_header()
@@ -35,48 +48,72 @@ class RecycleBinWidget(BoxLayout):
     
     def create_header(self):
         """Create header with title and actions"""
-        header = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), padding=10)
+        header = MDBoxLayout(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(120),
+            padding=[20, 20, 20, 10],
+            spacing=10
+        )
         
-        title = Label(
-            text='🗑️ Recycle Bin',
-            font_size=24,
-            size_hint_x=0.6
+        # Large title
+        title = MDLabel(
+            text='RECYCLE BIN',
+            font_style="H3",
+            text_color="white",
+            halign="center",
+            bold=True
         )
         header.add_widget(title)
         
-        # Quick actions
-        actions_layout = BoxLayout(orientation='horizontal', size_hint_x=0.4, spacing=5)
+        # Action buttons row
+        actions_row = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(40),
+            spacing=15
+        )
         
-        self.cleanup_btn = Button(
+        self.cleanup_btn = MDRaisedButton(
             text='🧹 Cleanup',
-            font_size=14,
-            size_hint_x=0.5
+            md_bg_color=[0.46, 0.53, 0.6, 1],
+            text_color="white",
+            size_hint_x=0.5,
+            elevation=3
         )
         self.cleanup_btn.bind(on_press=self.manual_cleanup)
-        actions_layout.add_widget(self.cleanup_btn)
+        actions_row.add_widget(self.cleanup_btn)
         
-        self.empty_btn = Button(
+        self.empty_btn = MDRaisedButton(
             text='🔥 Empty All',
-            font_size=14,
+            md_bg_color=[0.8, 0.2, 0.2, 1],  # Red warning color
+            text_color="white",
             size_hint_x=0.5,
-            background_color=(0.8, 0.2, 0.2, 1)  # Red warning color
+            elevation=3
         )
         self.empty_btn.bind(on_press=self.confirm_empty_all)
-        actions_layout.add_widget(self.empty_btn)
+        actions_row.add_widget(self.empty_btn)
         
-        header.add_widget(actions_layout)
+        header.add_widget(actions_row)
         self.add_widget(header)
     
     def create_filter_section(self):
         """Create file type filter section"""
-        filter_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), padding=10)
+        filter_container = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(60),
+            padding=[20, 10, 20, 10],
+            spacing=15
+        )
         
-        filter_label = Label(
+        filter_label = MDLabel(
             text='Filter:',
             size_hint_x=0.2,
-            font_size=16
+            font_style="Subtitle1",
+            text_color="white"
         )
-        filter_layout.add_widget(filter_label)
+        filter_container.add_widget(filter_label)
         
         # Create filter options dynamically from FILE_TYPE_CONFIG
         filter_options = ['All Files']
@@ -88,80 +125,91 @@ class RecycleBinWidget(BoxLayout):
             text='All Files',
             values=filter_options,
             size_hint_x=0.8,
-            font_size=16
+            font_size=16,
+            background_color=[0.31, 0.35, 0.39, 1]  # BlueGray
         )
         self.filter_spinner.bind(text=self.on_filter_changed)
-        filter_layout.add_widget(self.filter_spinner)
+        filter_container.add_widget(self.filter_spinner)
         
-        self.add_widget(filter_layout)
+        self.add_widget(filter_container)
     
     def create_stats_section(self):
         """Create statistics section"""
-        self.stats_layout = BoxLayout(orientation='vertical', size_hint_y=None, height=dp(80), padding=10)
-        
-        self.stats_label = Label(
-            text='Loading statistics...',
-            font_size=14,
-            color=(0.7, 0.7, 0.7, 1)
+        self.stats_label = MDLabel(
+            text='Loading recycle bin statistics...',
+            font_style="Body2",
+            text_color=[0.8, 0.8, 0.8, 1],
+            halign="center",
+            size_hint_y=None,
+            height=dp(30)
         )
-        self.stats_layout.add_widget(self.stats_label)
-        
-        self.add_widget(self.stats_layout)
+        self.add_widget(self.stats_label)
     
     def create_file_grid(self):
         """Create scrollable file grid"""
-        scroll = ScrollView()
-        
-        self.file_grid = GridLayout(
-            cols=1,  # Single column for detailed view
-            spacing=5,
-            padding=10,
-            size_hint_y=None
+        scroll = MDScrollView(
+            bar_width=dp(4),
+            bar_color=[0.46, 0.53, 0.6, 0.7],
+            bar_inactive_color=[0.7, 0.7, 0.7, 0.3],
+            effect_cls="ScrollEffect"
         )
-        self.file_grid.bind(minimum_height=self.file_grid.setter('height'))
+        
+        self.file_grid = MDGridLayout(
+            cols=1,  # Single column for detailed view
+            spacing=15,
+            padding=[20, 10, 20, 10],
+            size_hint_y=None,
+            adaptive_height=True
+        )
         
         scroll.add_widget(self.file_grid)
         self.add_widget(scroll)
     
     def create_bottom_buttons(self):
         """Create bottom action buttons"""
-        bottom_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), padding=10)
+        bottom_bar = MDCard(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(70),
+            padding=15,
+            spacing=15,
+            elevation=8,
+            md_bg_color=[0.25, 0.29, 0.31, 1]  # BlueGray dark
+        )
         
-        self.refresh_btn = Button(
+        self.refresh_btn = MDFlatButton(
             text='🔄 Refresh',
-            font_size=16,
+            text_color="white",
             size_hint_x=0.25
         )
         self.refresh_btn.bind(on_press=self.refresh_recycle_bin)
-        bottom_layout.add_widget(self.refresh_btn)
+        bottom_bar.add_widget(self.refresh_btn)
         
-        self.restore_btn = Button(
-            text='♻️ Restore Selected',
-            font_size=16,
-            size_hint_x=0.25,
-            background_color=(0.2, 0.7, 0.2, 1)  # Green
+        self.restore_btn = MDFlatButton(
+            text='♻️ Restore',
+            text_color=[0.4, 0.8, 0.4, 1],  # Green
+            size_hint_x=0.25
         )
         self.restore_btn.bind(on_press=self.restore_selected)
-        bottom_layout.add_widget(self.restore_btn)
+        bottom_bar.add_widget(self.restore_btn)
         
-        self.delete_btn = Button(
-            text='💀 Delete Forever',
-            font_size=16,
-            size_hint_x=0.25,
-            background_color=(0.8, 0.2, 0.2, 1)  # Red
+        self.delete_btn = MDFlatButton(
+            text='💀 Delete',
+            text_color=[0.9, 0.4, 0.4, 1],  # Red
+            size_hint_x=0.25
         )
         self.delete_btn.bind(on_press=self.delete_selected_forever)
-        bottom_layout.add_widget(self.delete_btn)
+        bottom_bar.add_widget(self.delete_btn)
         
-        self.back_btn = Button(
-            text='🔙 Back to Vault',
-            font_size=16,
+        self.back_btn = MDFlatButton(
+            text='← Back',
+            text_color=[0.7, 0.7, 0.7, 1],
             size_hint_x=0.25
         )
         self.back_btn.bind(on_press=self.back_to_vault)
-        bottom_layout.add_widget(self.back_btn)
+        bottom_bar.add_widget(self.back_btn)
         
-        self.add_widget(bottom_layout)
+        self.add_widget(bottom_bar)
     
     def on_filter_changed(self, spinner, text):
         """Handle filter change"""
@@ -188,7 +236,7 @@ class RecycleBinWidget(BoxLayout):
             stats = self.recycle_bin.get_recycle_bin_stats()
             
             # Create stats text
-            stats_text = f"📊 Total: {stats['total_files']} files ({stats['total_size_mb']} MB)\n"
+            stats_text = f"📊 Total: {stats['total_files']} files ({stats['total_size_mb']} MB)"
             
             # Add breakdown by type (only show non-zero counts)
             type_breakdown = []
@@ -201,9 +249,9 @@ class RecycleBinWidget(BoxLayout):
                     type_breakdown.append(f"{icon} {name}: {count} ({size} MB)")
             
             if type_breakdown:
-                stats_text += " | ".join(type_breakdown)
+                stats_text += f"\n{' | '.join(type_breakdown)}"
             else:
-                stats_text += "🎉 Recycle bin is empty!"
+                stats_text = "🎉 Recycle bin is empty!"
             
             self.stats_label.text = stats_text
             
@@ -214,9 +262,10 @@ class RecycleBinWidget(BoxLayout):
     def refresh_file_grid(self):
         """Refresh the file grid based on current filter"""
         try:
+            selected_file_id = self.selected_file['recycled_id'] if self.selected_file else None
+            
             # Clear existing widgets
             self.file_grid.clear_widgets()
-            self.selected_file = None
             
             # Get filtered files
             if self.current_filter == 'all':
@@ -235,581 +284,217 @@ class RecycleBinWidget(BoxLayout):
                 file_widget = self.create_file_widget(file_info)
                 self.file_grid.add_widget(file_widget)
                 
+                # Restore selection if file still exists
+                if selected_file_id and file_info['recycled_id'] == selected_file_id:
+                    self.selected_file = file_info
+                
         except Exception as e:
             print(f"Error refreshing file grid: {e}")
-            error_label = Label(
-                text=f"❌ Error loading files: {str(e)}",
+            error_card = MDCard(
                 size_hint_y=None,
-                height=dp(50)
+                height=dp(60),
+                padding=15,
+                md_bg_color=[0.8, 0.2, 0.2, 0.3]
             )
-            self.file_grid.add_widget(error_label)
+            error_label = MDLabel(
+                text=f"❌ Error loading files: {str(e)}",
+                text_color=[1, 0.4, 0.4, 1],
+                halign="center"
+            )
+            error_card.add_widget(error_label)
+            self.file_grid.add_widget(error_card)
     
     def create_empty_state_widget(self):
         """Create widget for empty recycle bin state"""
-        empty_layout = BoxLayout(
+        empty_card = MDCard(
             orientation='vertical',
             size_hint_y=None,
             height=dp(200),
-            spacing=10,
-            padding=20
+            padding=30,
+            spacing=20,
+            md_bg_color=[0.31, 0.35, 0.39, 0.8],  # BlueGray light
+            elevation=2
         )
         
         filter_text = "this category" if self.current_filter != 'all' else "the recycle bin"
         
-        empty_label = Label(
+        empty_label = MDLabel(
             text=f'🎉 No files in {filter_text}\n\nDeleted files will appear here and be\nautomatically cleaned up based on retention settings.',
-            font_size=16,
+            font_style="Body1",
             halign='center',
-            color=(0.6, 0.6, 0.6, 1)
+            text_color=[0.7, 0.7, 0.7, 1]
         )
         empty_label.bind(size=empty_label.setter('text_size'))
-        empty_layout.add_widget(empty_label)
+        empty_card.add_widget(empty_label)
         
-        return empty_layout
+        return empty_card
     
     def create_file_widget(self, file_info):
         """Create widget for individual recycled file"""
-        # Main container
-        file_layout = BoxLayout(
+        is_selected = self.selected_file and self.selected_file['recycled_id'] == file_info['recycled_id']
+        
+        # Main card with modern styling
+        file_card = MDCard(
             orientation='horizontal',
             size_hint_y=None,
-            height=dp(80),
-            padding=5,
-            spacing=10
+            height=dp(100),
+            padding=15,
+            spacing=15,
+            elevation=4 if is_selected else 2,
+            md_bg_color=[0.46, 0.53, 0.6, 1] if is_selected else [0.31, 0.35, 0.39, 0.9],
+            ripple_behavior=True
         )
         
-        # File type icon and info
-        info_layout = BoxLayout(orientation='vertical', size_hint_x=0.7)
-        
-        # Top row: Icon, name, size
-        top_row = BoxLayout(orientation='horizontal', size_hint_y=0.6)
+        # File type icon container
+        icon_container = MDBoxLayout(
+            orientation='vertical',
+            size_hint_x=None,
+            width=dp(60),
+            padding=[5, 5]
+        )
         
         file_type = file_info['file_type']
         icon = self.recycle_bin.FILE_TYPE_CONFIG[file_type]['icon']
         
-        icon_label = Label(
+        icon_label = MDLabel(
             text=icon,
-            font_size=24,
-            size_hint_x=0.1
+            font_style="H4",
+            halign="center",
+            text_color="white"
         )
-        top_row.add_widget(icon_label)
+        icon_container.add_widget(icon_label)
+        file_card.add_widget(icon_container)
         
-        name_size_layout = BoxLayout(orientation='vertical', size_hint_x=0.9)
+        # File info section
+        info_layout = MDBoxLayout(
+            orientation='vertical',
+            size_hint_x=0.6,
+            spacing=5
+        )
         
         # File name (truncated if too long)
         display_name = file_info['display_name']
-        if len(display_name) > 40:
-            display_name = display_name[:37] + "..."
+        if len(display_name) > 35:
+            display_name = display_name[:32] + "..."
         
-        name_label = Label(
+        name_label = MDLabel(
             text=display_name,
-            font_size=14,
-            halign='left',
-            color=(1, 1, 1, 1)
+            font_style="Subtitle1",
+            text_color="white",
+            bold=True,
+            size_hint_y=0.4
         )
-        name_label.bind(size=name_label.setter('text_size'))
-        name_size_layout.add_widget(name_label)
+        info_layout.add_widget(name_label)
         
         # Size and type info
         size_mb = file_info['size'] / (1024 * 1024)
         type_display = self.recycle_bin.FILE_TYPE_CONFIG[file_type]['display_name']
         
-        size_label = Label(
-            text=f"{size_mb:.1f} MB • {type_display}",
-            font_size=12,
-            halign='left',
-            color=(0.7, 0.7, 0.7, 1)
+        size_label = MDLabel(
+            text=f"Size: {size_mb:.1f} MB • {type_display}",
+            font_style="Caption",
+            text_color=[0.8, 0.8, 0.8, 1],
+            size_hint_y=0.3
         )
-        size_label.bind(size=size_label.setter('text_size'))
-        name_size_layout.add_widget(size_label)
+        info_layout.add_widget(size_label)
         
-        top_row.add_widget(name_size_layout)
-        info_layout.add_widget(top_row)
-        
-        # Bottom row: Deletion date and days remaining
-        bottom_row = BoxLayout(orientation='horizontal', size_hint_y=0.4)
-        
+        # Deletion date and days remaining
         deleted_at = datetime.fromisoformat(file_info['deleted_at'])
         deleted_date = deleted_at.strftime("%Y-%m-%d %H:%M")
         days_remaining = file_info['days_remaining']
         
         if days_remaining > 0:
             remaining_text = f"🕒 Deleted: {deleted_date} • {days_remaining} days remaining"
-            remaining_color = (0.7, 0.7, 0.7, 1)
+            remaining_color = [0.7, 0.7, 0.7, 1]
         else:
             remaining_text = f"⚠️ Deleted: {deleted_date} • EXPIRES SOON!"
-            remaining_color = (1, 0.6, 0, 1)  # Orange warning
+            remaining_color = [1, 0.6, 0, 1]  # Orange warning
         
-        date_label = Label(
+        date_label = MDLabel(
             text=remaining_text,
-            font_size=11,
-            halign='left',
-            color=remaining_color
+            font_style="Caption",
+            text_color=remaining_color,
+            size_hint_y=0.3
         )
-        date_label.bind(size=date_label.setter('text_size'))
-        bottom_row.add_widget(date_label)
+        info_layout.add_widget(date_label)
         
-        info_layout.add_widget(bottom_row)
-        file_layout.add_widget(info_layout)
+        file_card.add_widget(info_layout)
         
         # Action buttons
-        button_layout = BoxLayout(orientation='horizontal', size_hint_x=0.3, spacing=5)
+        button_layout = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_x=None,
+            width=dp(160),
+            spacing=10
+        )
         
-        select_btn = Button(
-            text='📋\nSelect',
-            font_size=12,
-            size_hint_x=0.5
+        # Select button
+        select_btn = MDRaisedButton(
+            text='📋 Select',
+            md_bg_color=[0.2, 0.6, 0.8, 1],
+            text_color="white",
+            size_hint_x=0.5,
+            elevation=2
         )
         select_btn.bind(on_press=lambda x: self.select_file(file_info))
         button_layout.add_widget(select_btn)
         
-        options_btn = Button(
-            text='⚙️\nOptions',
-            font_size=12,
-            size_hint_x=0.5
+        # Options button
+        options_btn = MDRaisedButton(
+            text='⚙️ Options',
+            md_bg_color=[0.5, 0.5, 0.5, 1],
+            text_color="white",
+            size_hint_x=0.5,
+            elevation=2
         )
         options_btn.bind(on_press=lambda x: self.show_file_options(file_info))
         button_layout.add_widget(options_btn)
         
-        file_layout.add_widget(button_layout)
+        file_card.add_widget(button_layout)
         
-        # Add selection indicator
-        if self.selected_file and self.selected_file['recycled_id'] == file_info['recycled_id']:
-            file_layout.canvas.before.clear()
-            from kivy.graphics import Color, Rectangle
-            with file_layout.canvas.before:
-                Color(0.2, 0.6, 0.8, 0.3)  # Light blue highlight
-                Rectangle(pos=file_layout.pos, size=file_layout.size)
+        # Add click to select functionality
+        file_card.bind(on_release=lambda x: self.select_file(file_info))
         
-        return file_layout
+        return file_card
     
     def select_file(self, file_info):
         """Select a file and refresh to show selection"""
         self.selected_file = file_info
-        print(f"Selected file: {file_info['display_name']}")
-        # Don't refresh the entire grid - just print confirmation
-        print(f"✅ File selected: {file_info['recycled_id']}")
+        print(f"✅ File selected: {file_info['display_name']}")
+        self.refresh_file_grid()
     
     def show_file_options(self, file_info):
         """Show detailed options for a specific file"""
-        content = BoxLayout(orientation='vertical', spacing=10, padding=15)
-        
-        # File details
-        file_type = file_info['file_type']
-        icon = self.recycle_bin.FILE_TYPE_CONFIG[file_type]['icon']
-        type_name = self.recycle_bin.FILE_TYPE_CONFIG[file_type]['display_name']
-        
-        details_text = f"""{icon} {file_info['display_name']}
-
-📁 Type: {type_name}
-📊 Size: {file_info['size'] / (1024 * 1024):.1f} MB
-🕒 Deleted: {datetime.fromisoformat(file_info['deleted_at']).strftime("%Y-%m-%d %H:%M")}
-⏰ Days Remaining: {file_info['days_remaining']}
-📍 Original Location: {file_info['original_location']}"""
-        
-        details_label = Label(
-            text=details_text,
-            font_size=14,
-            halign='left'
-        )
-        details_label.bind(size=details_label.setter('text_size'))
-        content.add_widget(details_label)
-        
-        # Action buttons
-        button_layout = BoxLayout(orientation='vertical', spacing=8, size_hint_y=None, height=dp(120))
-        
-        # First row
-        row1 = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50))
-        
-        restore_btn = Button(
-            text='♻️ Restore File',
-            background_color=(0.2, 0.7, 0.2, 1),
-            font_size=16
-        )
-        
-        delete_btn = Button(
-            text='💀 Delete Forever',
-            background_color=(0.8, 0.2, 0.2, 1),
-            font_size=16
-        )
-        
-        row1.add_widget(restore_btn)
-        row1.add_widget(delete_btn)
-        button_layout.add_widget(row1)
-        
-        # Second row
-        cancel_btn = Button(
-            text='❌ Cancel',
-            size_hint_y=None,
-            height=dp(50),
-            background_color=(0.5, 0.5, 0.5, 1)
-        )
-        button_layout.add_widget(cancel_btn)
-        
-        content.add_widget(button_layout)
-        
-        popup = Popup(
-            title=f'{icon} File Options',
-            content=content,
-            size_hint=(0.9, 0.8),
-            auto_dismiss=False
-        )
-        
-        def restore_file(instance):
-            popup.dismiss()
-            self.restore_file_with_progress(file_info)
-        
-        def delete_file(instance):
-            popup.dismiss()
-            self.confirm_permanent_delete(file_info)
-        
-        restore_btn.bind(on_press=restore_file)
-        delete_btn.bind(on_press=delete_file)
-        cancel_btn.bind(on_press=popup.dismiss)
-        
-        popup.open()
+        show_file_options_dialog(file_info, self.recycle_bin, self.refresh_recycle_bin)
     
     def restore_selected(self, instance):
         """Restore the currently selected file"""
         if not self.selected_file:
-            self.show_no_selection_popup("restore")
+            show_no_selection_popup("restore")
             return
         
-        self.restore_file_with_progress(self.selected_file)
-    
-    def restore_file_with_progress(self, file_info):
-        """Restore file with progress indication"""
-        # Show progress popup
-        progress_content = Label(
-            text=f'♻️ Restoring file...\n{file_info["display_name"]}\n\nPlease wait...',
-            halign='center',
-            font_size=16
-        )
-        
-        progress_popup = Popup(
-            title='Restoring File',
-            content=progress_content,
-            size_hint=(0.7, 0.4),
-            auto_dismiss=False
-        )
-        progress_popup.open()
-        
-        def do_restore():
-            result = self.recycle_bin.restore_from_recycle(file_info['recycled_id'])
-            Clock.schedule_once(lambda dt: finish_restore(result), 0)
-        
-        def finish_restore(result):
-            progress_popup.dismiss()
-            
-            if result['success']:
-                self.refresh_recycle_bin()
-                
-                success_popup = Popup(
-                    title='✅ File Restored',
-                    content=Label(text=f'File restored successfully to:\n{result["restored_path"]}'),
-                    size_hint=(0.8, 0.4),
-                    auto_dismiss=True
-                )
-                success_popup.open()
-                Clock.schedule_once(lambda dt: success_popup.dismiss(), 3)
-            else:
-                error_popup = Popup(
-                    title='❌ Restore Failed',
-                    content=Label(text=f'Could not restore file:\n{result["error"]}'),
-                    size_hint=(0.8, 0.4),
-                    auto_dismiss=True
-                )
-                error_popup.open()
-                Clock.schedule_once(lambda dt: error_popup.dismiss(), 4)
-        
-        # Start restoration in background
-        import threading
-        thread = threading.Thread(target=do_restore)
-        thread.daemon = True
-        thread.start()
+        restore_file_with_progress(self.selected_file, self.recycle_bin, self.refresh_recycle_bin_and_clear_selection)
     
     def delete_selected_forever(self, instance):
         """Delete selected file permanently"""
         if not self.selected_file:
-            self.show_no_selection_popup("delete")
+            show_no_selection_popup("delete")
             return
         
-        self.confirm_permanent_delete(self.selected_file)
+        confirm_permanent_delete(self.selected_file, self.recycle_bin, self.refresh_recycle_bin_and_clear_selection)
     
-    def confirm_permanent_delete(self, file_info):
-        """Confirm permanent deletion of a file"""
-        content = BoxLayout(orientation='vertical', spacing=15, padding=15)
-        
-        warning_text = f"""⚠️ PERMANENT DELETION WARNING ⚠️
-
-File: {file_info['display_name']}
-Type: {self.recycle_bin.FILE_TYPE_CONFIG[file_info['file_type']]['display_name']}
-Size: {file_info['size'] / (1024 * 1024):.1f} MB
-
-This will PERMANENTLY delete the file.
-This action CANNOT be undone!
-
-Are you absolutely sure?"""
-        
-        warning_label = Label(
-            text=warning_text,
-            halign='center',
-            font_size=14,
-            color=(1, 0.8, 0, 1)  # Yellow warning
-        )
-        warning_label.bind(size=warning_label.setter('text_size'))
-        content.add_widget(warning_label)
-        
-        button_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=10)
-        
-        delete_btn = Button(
-            text='💀 YES, DELETE FOREVER',
-            background_color=(0.9, 0, 0, 1),
-            font_size=16
-        )
-        
-        cancel_btn = Button(
-            text='❌ CANCEL',
-            background_color=(0.5, 0.5, 0.5, 1),
-            font_size=16
-        )
-        
-        button_layout.add_widget(delete_btn)
-        button_layout.add_widget(cancel_btn)
-        content.add_widget(button_layout)
-        
-        popup = Popup(
-            title='💀 Confirm Permanent Deletion',
-            content=content,
-            size_hint=(0.8, 0.7),
-            auto_dismiss=False
-        )
-        
-        def delete_confirmed(instance):
-            popup.dismiss()
-            self.delete_file_permanently(file_info)
-        
-        delete_btn.bind(on_press=delete_confirmed)
-        cancel_btn.bind(on_press=popup.dismiss)
-        
-        popup.open()
-    
-    def delete_file_permanently(self, file_info):
-        """Permanently delete a file"""
-        # Show progress popup
-        progress_content = Label(
-            text=f'💀 Permanently deleting...\n{file_info["display_name"]}\n\nPlease wait...',
-            halign='center',
-            font_size=16
-        )
-        
-        progress_popup = Popup(
-            title='Deleting File',
-            content=progress_content,
-            size_hint=(0.7, 0.4),
-            auto_dismiss=False
-        )
-        progress_popup.open()
-        
-        def do_delete():
-            result = self.recycle_bin.delete_permanently(file_info['recycled_id'])
-            Clock.schedule_once(lambda dt: finish_delete(result), 0)
-        
-        def finish_delete(result):
-            progress_popup.dismiss()
-            
-            if result['success']:
-                self.selected_file = None
-                self.refresh_recycle_bin()
-                
-                success_popup = Popup(
-                    title='✅ File Deleted',
-                    content=Label(text='File permanently deleted successfully!'),
-                    size_hint=(0.6, 0.3),
-                    auto_dismiss=True
-                )
-                success_popup.open()
-                Clock.schedule_once(lambda dt: success_popup.dismiss(), 2)
-            else:
-                error_popup = Popup(
-                    title='❌ Delete Failed',
-                    content=Label(text=f'Could not delete file:\n{result["error"]}'),
-                    size_hint=(0.8, 0.4),
-                    auto_dismiss=True
-                )
-                error_popup.open()
-                Clock.schedule_once(lambda dt: error_popup.dismiss(), 4)
-        
-        # Start deletion in background
-        import threading
-        thread = threading.Thread(target=do_delete)
-        thread.daemon = True
-        thread.start()
+    def refresh_recycle_bin_and_clear_selection(self):
+        """Refresh recycle bin and clear selection"""
+        self.selected_file = None
+        self.refresh_recycle_bin()
     
     def manual_cleanup(self, instance):
         """Manually trigger cleanup of expired files"""
-        # Show progress popup
-        progress_content = Label(
-            text='🧹 Cleaning up expired files...\n\nPlease wait...',
-            halign='center',
-            font_size=16
-        )
-        
-        progress_popup = Popup(
-            title='Cleanup in Progress',
-            content=progress_content,
-            size_hint=(0.6, 0.3),
-            auto_dismiss=False
-        )
-        progress_popup.open()
-        
-        def do_cleanup():
-            expired_count = self.recycle_bin.cleanup_expired_files()
-            Clock.schedule_once(lambda dt: finish_cleanup(expired_count), 0)
-        
-        def finish_cleanup(expired_count):
-            progress_popup.dismiss()
-            self.refresh_recycle_bin()
-            
-            if expired_count > 0:
-                message = f'Cleanup completed!\n{expired_count} expired files were deleted.'
-            else:
-                message = 'Cleanup completed!\nNo expired files found.'
-            
-            cleanup_popup = Popup(
-                title='🧹 Cleanup Complete',
-                content=Label(text=message),
-                size_hint=(0.7, 0.4),
-                auto_dismiss=True
-            )
-            cleanup_popup.open()
-            Clock.schedule_once(lambda dt: cleanup_popup.dismiss(), 3)
-        
-        # Start cleanup in background
-        import threading
-        thread = threading.Thread(target=do_cleanup)
-        thread.daemon = True
-        thread.start()
+        manual_cleanup_dialog(self.recycle_bin, self.refresh_recycle_bin)
     
     def confirm_empty_all(self, instance):
         """Confirm emptying entire recycle bin"""
-        content = BoxLayout(orientation='vertical', spacing=15, padding=15)
-        
-        stats = self.recycle_bin.get_recycle_bin_stats()
-        
-        warning_text = f"""🔥 EMPTY RECYCLE BIN WARNING 🔥
-
-This will PERMANENTLY DELETE ALL files in the recycle bin:
-
-📊 Total Files: {stats['total_files']}
-💾 Total Size: {stats['total_size_mb']} MB
-
-This action CANNOT be undone!
-All files will be lost forever!
-
-Are you absolutely sure?"""
-        
-        warning_label = Label(
-            text=warning_text,
-            halign='center',
-            font_size=14,
-            color=(1, 0.2, 0.2, 1)  # Red warning
-        )
-        warning_label.bind(size=warning_label.setter('text_size'))
-        content.add_widget(warning_label)
-        
-        button_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=10)
-        
-        empty_btn = Button(
-            text='🔥 YES, EMPTY RECYCLE BIN',
-            background_color=(0.9, 0, 0, 1),
-            font_size=16
-        )
-        
-        cancel_btn = Button(
-            text='❌ CANCEL',
-            background_color=(0.5, 0.5, 0.5, 1),
-            font_size=16
-        )
-        
-        button_layout.add_widget(empty_btn)
-        button_layout.add_widget(cancel_btn)
-        content.add_widget(button_layout)
-        
-        popup = Popup(
-            title='🔥 Empty Recycle Bin',
-            content=content,
-            size_hint=(0.85, 0.8),
-            auto_dismiss=False
-        )
-        
-        def empty_confirmed(instance):
-            popup.dismiss()
-            self.empty_recycle_bin()
-        
-        empty_btn.bind(on_press=empty_confirmed)
-        cancel_btn.bind(on_press=popup.dismiss)
-        
-        popup.open()
-    
-    def empty_recycle_bin(self):
-        """Empty the entire recycle bin"""
-        # Show progress popup
-        progress_content = Label(
-            text='🔥 Emptying recycle bin...\n\nThis may take a moment...',
-            halign='center',
-            font_size=16
-        )
-        
-        progress_popup = Popup(
-            title='Emptying Recycle Bin',
-            content=progress_content,
-            size_hint=(0.7, 0.4),
-            auto_dismiss=False
-        )
-        progress_popup.open()
-        
-        def do_empty():
-            result = self.recycle_bin.empty_recycle_bin()
-            Clock.schedule_once(lambda dt: finish_empty(result), 0)
-        
-        def finish_empty(result):
-            progress_popup.dismiss()
-            self.selected_file = None
-            self.refresh_recycle_bin()
-            
-            if result['success']:
-                message = f'Recycle bin emptied successfully!\n{result["deleted_count"]} files were permanently deleted.'
-                title = '✅ Recycle Bin Emptied'
-            else:
-                message = f'Error emptying recycle bin:\n{result["error"]}\n\n{result["deleted_count"]} files were deleted.'
-                title = '❌ Empty Failed'
-            
-            result_popup = Popup(
-                title=title,
-                content=Label(text=message),
-                size_hint=(0.8, 0.5),
-                auto_dismiss=True
-            )
-            result_popup.open()
-            Clock.schedule_once(lambda dt: result_popup.dismiss(), 4)
-        
-        # Start emptying in background
-        import threading
-        thread = threading.Thread(target=do_empty)
-        thread.daemon = True
-        thread.start()
-    
-    def show_no_selection_popup(self, action):
-        """Show popup when no file is selected"""
-        popup = Popup(
-            title='No File Selected',
-            content=Label(text=f'Please select a file first by tapping "Select" to {action} it.'),
-            size_hint=(0.7, 0.3),
-            auto_dismiss=True
-        )
-        popup.open()
-        Clock.schedule_once(lambda dt: popup.dismiss(), 2)
+        confirm_empty_all_dialog(self.recycle_bin, self.refresh_recycle_bin_and_clear_selection)
     
     def back_to_vault(self, instance):
         """Go back to main vault screen"""
@@ -843,5 +528,6 @@ def integrate_recycle_bin(vault_app):
     return vault_app.recycle_bin
 
 print("✅ Recycle Bin UI module loaded successfully")
-print("🎯 Supports all file types with flexible filtering and management")
+print("🎯 Updated with BlueGray theme and MDComponents")
 print("♻️ Complete restore and permanent deletion capabilities")
+print("📱 Modern card-based interface with proper selection handling")
