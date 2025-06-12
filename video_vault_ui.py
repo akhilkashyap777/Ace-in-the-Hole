@@ -13,6 +13,7 @@ from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.metrics import dp
+from video_camera_module import VideoCameraModule
 
 # Import the core video vault functionality
 from video_vault_core import VideoVaultCore, ANDROID
@@ -182,8 +183,12 @@ class VideoGalleryWidget(MDBoxLayout):
     def __init__(self, video_vault, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
         self.video_vault = video_vault
+        self.vault_core = video_vault  # Add this line for camera module compatibility
         self.selected_video = None
         self.video_widgets = []  # Keep track of video widgets for cleanup
+        
+        # Initialize camera module
+        self.camera_module = VideoCameraModule(self)
         
         # Set BlueGray background
         self.md_bg_color = [0.37, 0.49, 0.55, 1]
@@ -243,6 +248,11 @@ class VideoGalleryWidget(MDBoxLayout):
         actions_row.add_widget(self.add_btn)
         
         header.add_widget(actions_row)
+        
+        # Add camera buttons
+        camera_buttons = self.camera_module.build_camera_buttons()
+        header.add_widget(camera_buttons)
+        
         self.add_widget(header)
     
     def build_video_grid(self):
@@ -343,7 +353,7 @@ class VideoGalleryWidget(MDBoxLayout):
         
         # Clean up resources first
         self.video_vault.cleanup_video_players()
-        self.video_vault.cleanup_all_cv2_captures()
+        self.video_vault.cleanup_all_imageio_readers()
         
         # Clear existing widgets
         self.cleanup_video_widgets()
@@ -621,7 +631,7 @@ class VideoGalleryWidget(MDBoxLayout):
         
         # Clean up before leaving
         self.video_vault.cleanup_video_players()
-        self.video_vault.cleanup_all_cv2_captures()
+        self.video_vault.cleanup_all_imageio_readers()
         self.cleanup_video_widgets()
         
         # Navigate back

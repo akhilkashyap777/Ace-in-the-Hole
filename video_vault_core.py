@@ -23,11 +23,12 @@ except ImportError:
 
 # Try to import video processing libraries
 try:
-    import cv2
-    OPENCV_AVAILABLE = True
+    import imageio
+    import imageio_ffmpeg
+    IMAGEIO_AVAILABLE = True
 except ImportError:
-    OPENCV_AVAILABLE = False
-    print("OpenCV not available - video thumbnails will use basic method")
+    IMAGEIO_AVAILABLE = False
+    print("ImageIO not available - video thumbnails will use basic method")
 
 # Windows-specific imports for advanced file operations
 if platform.system() == "Windows":
@@ -163,7 +164,7 @@ class VideoVaultCore:
         self.ensure_vault_directory()
         self.processing = False  # Flag to prevent multiple operations
         self.active_video_players = []  # Track active video players for cleanup
-        self.cv2_captures = []  # Track OpenCV VideoCapture objects
+        self.imageio_readers = []  # Track ImageIO reader objects
         
     def get_vault_directory(self):
         """Get the secure directory for storing vault videos"""
@@ -203,24 +204,21 @@ class VideoVaultCore:
             except Exception as e:
                 print(f"Permission error: {e}")
     
-    def cleanup_all_cv2_captures(self):
-        """Clean up all OpenCV VideoCapture objects"""
-        if OPENCV_AVAILABLE:
+    def cleanup_all_imageio_readers(self):
+        """Clean up all ImageIO reader objects"""
+        if IMAGEIO_AVAILABLE:
             try:
-                print(f"Cleaning up {len(self.cv2_captures)} CV2 captures...")
+                print(f"Cleaning up {len(self.imageio_readers)} ImageIO readers...")
                 
-                # Release all tracked captures
-                for cap in self.cv2_captures:
+                # Close all tracked readers
+                for reader in self.imageio_readers:
                     try:
-                        if cap is not None:
-                            cap.release()
+                        if reader is not None:
+                            reader.close()
                     except Exception as e:
-                        print(f"Error releasing capture: {e}")
+                        print(f"Error closing reader: {e}")
                 
-                self.cv2_captures.clear()
-                
-                # Destroy all OpenCV windows
-                cv2.destroyAllWindows()
+                self.imageio_readers.clear()
                 
                 # Force garbage collection multiple times
                 for i in range(3):
@@ -231,10 +229,10 @@ class VideoVaultCore:
                 if platform.system() == "Windows":
                     time.sleep(1.0)
                     
-                print("CV2 cleanup completed")
+                print("ImageIO cleanup completed")
                     
             except Exception as e:
-                print(f"Error cleaning up CV2 captures: {e}")
+                print(f"Error cleaning up ImageIO readers: {e}")
     
     def cleanup_video_players(self):
         """Clean up any active video players to release file locks"""
@@ -265,41 +263,45 @@ class VideoVaultCore:
             
             print(f"Generating thumbnail for: {video_path}")
             
-            if OPENCV_AVAILABLE:
-                cap = None
+            if IMAGEIO_AVAILABLE:
+                reader = None
                 try:
-                    # Create VideoCapture object
-                    cap = cv2.VideoCapture(video_path)
-                    self.cv2_captures.append(cap)  # Track it
+                    # Create ImageIO reader object
+                    reader = imageio.get_reader(video_path, 'ffmpeg')
+                    self.imageio_readers.append(reader)  # Track it
                     
-                    if cap.isOpened():
-                        ret, frame = cap.read()
-                        if ret and frame is not None:
-                            # Resize frame to thumbnail size
-                            height, width = frame.shape[:2]
-                            aspect_ratio = width / height
-                            
-                            if aspect_ratio > 1:  # Landscape
-                                new_width = 200
-                                new_height = int(200 / aspect_ratio)
-                            else:  # Portrait
-                                new_height = 200
-                                new_width = int(200 * aspect_ratio)
-                            
-                            resized_frame = cv2.resize(frame, (new_width, new_height))
-                            cv2.imwrite(thumb_path, resized_frame)
-                            print(f"Thumbnail generated successfully: {thumb_path}")
+                    # Get the first frame
+                    frame = reader.get_data(0)
+                    
+                    if frame is not None:
+                        # Convert numpy array to PIL Image
+                        pil_image = PILImage.fromarray(frame)
+                        
+                        # Calculate thumbnail dimensions
+                        width, height = pil_image.size
+                        aspect_ratio = width / height
+                        
+                        if aspect_ratio > 1:  # Landscape
+                            new_width = 200
+                            new_height = int(200 / aspect_ratio)
+                        else:  # Portrait
+                            new_height = 200
+                            new_width = int(200 * aspect_ratio)
+                        
+                        # Resize and save
+                        thumbnail = pil_image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+                        thumbnail.save(thumb_path, 'JPEG')
+                        print(f"Thumbnail generated successfully: {thumb_path}")
                     
                     # CRITICAL: Immediate cleanup
-                    if cap is not None:
-                        cap.release()
+                    if reader is not None:
+                        reader.close()
                         # Remove from tracking list
-                        if cap in self.cv2_captures:
-                            self.cv2_captures.remove(cap)
-                        cap = None
+                        if reader in self.imageio_readers:
+                            self.imageio_readers.remove(reader)
+                        reader = None
                     
                     # Additional cleanup
-                    cv2.destroyAllWindows()
                     gc.collect()
                     
                     # Windows-specific: give time for file handles to be released
@@ -307,27 +309,26 @@ class VideoVaultCore:
                         time.sleep(0.3)
                     
                 except Exception as e:
-                    print(f"OpenCV thumbnail generation error: {e}")
+                    print(f"ImageIO thumbnail generation error: {e}")
                     # Ensure cleanup even on error
-                    if cap is not None:
+                    if reader is not None:
                         try:
-                            cap.release()
-                            if cap in self.cv2_captures:
-                                self.cv2_captures.remove(cap)
+                            reader.close()
+                            if reader in self.imageio_readers:
+                                self.imageio_readers.remove(reader)
                         except:
                             pass
                     # Fallback to PIL
                     self.generate_placeholder_thumbnail(thumb_path)
                 finally:
                     # Final cleanup - absolutely critical
-                    if cap is not None:
+                    if reader is not None:
                         try:
-                            cap.release()
-                            if cap in self.cv2_captures:
-                                self.cv2_captures.remove(cap)
+                            reader.close()
+                            if reader in self.imageio_readers:
+                                self.imageio_readers.remove(reader)
                         except:
                             pass
-                    cv2.destroyAllWindows()
                     gc.collect()
             else:
                 # Fallback: create a simple thumbnail placeholder
@@ -392,15 +393,23 @@ class VideoVaultCore:
             file_size_mb = round(file_size / (1024 * 1024), 1)
             
             duration = "Unknown"
-            if OPENCV_AVAILABLE:
-                cap = None
+            if IMAGEIO_AVAILABLE:
+                reader = None
                 try:
-                    cap = cv2.VideoCapture(video_path)
-                    self.cv2_captures.append(cap)  # Track it
+                    reader = imageio.get_reader(video_path, 'ffmpeg')
+                    self.imageio_readers.append(reader)  # Track it
                     
-                    if cap.isOpened():
-                        fps = cap.get(cv2.CAP_PROP_FPS)
-                        frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                    # Get video metadata
+                    meta = reader.get_meta_data()
+                    if 'duration' in meta:
+                        duration_seconds = meta['duration']
+                        minutes = int(duration_seconds // 60)
+                        seconds = int(duration_seconds % 60)
+                        duration = f"{minutes}:{seconds:02d}"
+                    elif 'fps' in meta and hasattr(reader, '_nframes'):
+                        # Fallback calculation if duration not available
+                        fps = meta['fps']
+                        frame_count = reader.count_frames()
                         if fps > 0:
                             duration_seconds = frame_count / fps
                             minutes = int(duration_seconds // 60)
@@ -408,22 +417,21 @@ class VideoVaultCore:
                             duration = f"{minutes}:{seconds:02d}"
                     
                     # CRITICAL: Immediate cleanup
-                    cap.release()
-                    if cap in self.cv2_captures:
-                        self.cv2_captures.remove(cap)
-                    cap = None
+                    reader.close()
+                    if reader in self.imageio_readers:
+                        self.imageio_readers.remove(reader)
+                    reader = None
                     
                 except Exception as e:
                     print(f"Error getting video duration: {e}")
                 finally:
-                    if cap is not None:
+                    if reader is not None:
                         try:
-                            cap.release()
-                            if cap in self.cv2_captures:
-                                self.cv2_captures.remove(cap)
+                            reader.close()
+                            if reader in self.imageio_readers:
+                                self.imageio_readers.remove(reader)
                         except:
                             pass
-                    cv2.destroyAllWindows()
                     gc.collect()
             
             return {
@@ -515,7 +523,7 @@ class VideoVaultCore:
         
         # Step 4: Comprehensive cleanup
         print("🔍 Comprehensive cleanup...")
-        self.cleanup_all_cv2_captures()
+        self.cleanup_all_imageio_readers()
         self.cleanup_video_players()
         
         # Force garbage collection multiple times
@@ -643,7 +651,7 @@ class VideoVaultCore:
             
             # Clean up resources first (keep existing cleanup)
             print("🔍 Cleaning up video resources...")
-            self.cleanup_all_cv2_captures()
+            self.cleanup_all_imageio_readers()
             self.cleanup_video_players()
             
             # Force garbage collection

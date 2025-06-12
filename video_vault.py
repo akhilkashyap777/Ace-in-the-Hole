@@ -9,11 +9,11 @@ Split into separate files for better organization and easier debugging:
 - video_vault_ui.py: User interface components (gallery widget, file selection dialogs)
 
 The main issue we're solving is Windows file locking when trying to delete videos.
-This happens because OpenCV's VideoCapture objects don't release file handles properly.
+This happens because video processing libraries don't release file handles properly.
 
 Key fixes implemented:
-1. Comprehensive tracking of all OpenCV VideoCapture objects
-2. Immediate and explicit release of all captures after use
+1. Comprehensive tracking of all ImageIO reader objects
+2. Immediate and explicit closure of all readers after use
 3. Multiple deletion methods with fallbacks
 4. Process killing for stubborn file locks
 5. Aggressive cleanup with garbage collection
@@ -27,7 +27,7 @@ Usage:
 """
 
 # Import all the functionality from the separate files
-from video_vault_core import VideoVaultCore, ANDROID, OPENCV_AVAILABLE
+from video_vault_core import VideoVaultCore, ANDROID, IMAGEIO_AVAILABLE
 from video_vault_ui import VideoVault, VideoGalleryWidget, integrate_video_vault
 
 # Re-export the main classes and functions for backwards compatibility
@@ -37,7 +37,7 @@ __all__ = [
     'VideoGalleryWidget',
     'integrate_video_vault',
     'ANDROID',
-    'OPENCV_AVAILABLE'
+    'IMAGEIO_AVAILABLE'
 ]
 
 # You can also import specific components if needed:
@@ -46,7 +46,7 @@ __all__ = [
 
 print("Video Vault module loaded successfully")
 print(f"Platform: {'Android' if ANDROID else 'Desktop'}")
-print(f"OpenCV available: {OPENCV_AVAILABLE}")
+print(f"ImageIO available: {IMAGEIO_AVAILABLE}")
 
 # For debugging, you can enable verbose logging by setting this to True
 DEBUG_MODE = True
