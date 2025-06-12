@@ -22,6 +22,7 @@ from complete_contact_integration import setup_contact_system
 from audio_vault_main_ui import integrate_audio_vault
 from password_manager import PasswordManager
 from password_ui import GamePasswordUI
+from file_transfer_vault import integrate_file_transfer
 
 # Try to import Android-specific modules
 try:
@@ -65,6 +66,7 @@ class VaultApp(MDApp):
         integrate_photo_vault(self)
         integrate_video_vault(self)
         integrate_recycle_bin(self)
+        integrate_file_transfer(self)
               
         self.game_widget = GameWidget()
         self.main_layout.add_widget(self.game_widget)
@@ -300,6 +302,14 @@ class VaultApp(MDApp):
             lambda x: self.show_recycle_bin()
         )
         cards_layout.add_widget(recycle_card)
+
+        transfer_card = self.create_vault_card(
+            "wifi",
+            "File Transfer",
+            "Share files via WiFi",
+            lambda x: self.show_file_transfer()
+        )
+        cards_layout.add_widget(transfer_card)
         
         # Add cards to scroll content
         scroll_content.add_widget(cards_layout)
