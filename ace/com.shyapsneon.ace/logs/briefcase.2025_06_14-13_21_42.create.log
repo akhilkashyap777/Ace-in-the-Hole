@@ -1,0 +1,320 @@
+Date/Time:       2025-06-14 13:21:43 
+Command line:    C:\3-cards\venv\Scripts\briefcase create android
+
+OS Release:      Windows 11
+OS Version:      10.0.26100
+Architecture:    AMD64
+Platform:        Windows-11-10.0.26100-SP0
+
+Python exe:      C:\3-cards\venv\Scripts\python.exe
+Python version:  3.13.2 (tags/v3.13.2:4f8bb39, Feb  4 2025, 15:23:48) [MSC v.1942 64 bit (AMD64)]
+Virtual env:     True
+Conda env:       False
+
+Briefcase:       0.3.23
+Target platform: android
+Target format:   gradle
+
+Environment Variables:
+	ALLUSERSPROFILE=C:\ProgramData
+	ANDROID_HOME=C:\Android\cmdline-tools\latest\cmdline-tools
+	APPDATA=C:\Users\welcome\AppData\Roaming
+	BUNDLED_DEBUGPY_PATH=c:\Users\welcome\.vscode\extensions\ms-python.debugpy-2025.8.0-win32-x64\bundled\libs\debugpy
+	CHROME_CRASHPAD_PIPE_NAME=\\.\pipe\crashpad_5844_RPFIHVDHHXZQFPUG
+	COLORTERM=truecolor
+	COMMONPROGRAMFILES=C:\Program Files\Common Files
+	COMMONPROGRAMFILES(X86)=C:\Program Files (x86)\Common Files
+	COMMONPROGRAMW6432=C:\Program Files\Common Files
+	COMPUTERNAME=DESKTOP-7P0ELGV
+	COMSPEC=C:\WINDOWS\system32\cmd.exe
+	DRIVERDATA=C:\Windows\System32\Drivers\DriverData
+	GIT_ASKPASS=********************
+	HOMEDRIVE=C:
+	HOMEPATH=\Users\welcome
+	LANG=en_US.UTF-8
+	LOCALAPPDATA=C:\Users\welcome\AppData\Local
+	LOGONSERVER=\\DESKTOP-7P0ELGV
+	NUMBER_OF_PROCESSORS=2
+	ONEDRIVE=C:\Users\welcome\OneDrive
+	ORIGINAL_XDG_CURRENT_DESKTOP=undefined
+	OS=Windows_NT
+	PATH=C:\3-cards\venv\Scripts;C:\Program Files\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Users\welcome\AppData\Local\Programs\Python\Python313\python.exe;C:\Program Files\Git\cmd;C:\flutter\bin;C:\Program Files\dotnet\;C:\Android\cmdline-tools\latest\cmdline-tools\bin;C:\Users\welcome\AppData\Local\Microsoft\WindowsApps;C:\Users\welcome\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\welcome\AppData\Local\Programs\Python\Python313\Scripts;C:\Users\welcome\AppData\Local\Programs\Python\Python313;C:\Users\welcome\.dotnet\tools;c:\Users\welcome\.vscode\extensions\ms-python.debugpy-2025.8.0-win32-x64\bundled\scripts\noConfigScripts
+	PATHEXT=.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC
+	PROCESSOR_ARCHITECTURE=AMD64
+	PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 122 Stepping 8, GenuineIntel
+	PROCESSOR_LEVEL=6
+	PROCESSOR_REVISION=7a08
+	PROGRAMDATA=C:\ProgramData
+	PROGRAMFILES=C:\Program Files
+	PROGRAMFILES(X86)=C:\Program Files (x86)
+	PROGRAMW6432=C:\Program Files
+	PROMPT=(venv) $P$G
+	PSMODULEPATH=;
+	PUBLIC=C:\Users\Public
+	PYDEVD_DISABLE_FILE_VALIDATION=1
+	SYSTEMDRIVE=C:
+	SYSTEMROOT=C:\WINDOWS
+	TEMP=C:\Users\welcome\AppData\Local\Temp
+	TERM_PROGRAM=vscode
+	TERM_PROGRAM_VERSION=1.100.3
+	TMP=C:\Users\welcome\AppData\Local\Temp
+	USERDOMAIN=DESKTOP-7P0ELGV
+	USERDOMAIN_ROAMINGPROFILE=DESKTOP-7P0ELGV
+	USERNAME=welcome
+	USERPROFILE=C:\Users\welcome
+	VIRTUAL_ENV=C:\3-cards\venv
+	VIRTUAL_ENV_PROMPT=venv
+	VSCODE_DEBUGPY_ADAPTER_ENDPOINTS=c:\Users\welcome\.vscode\extensions\ms-python.debugpy-2025.8.0-win32-x64\.noConfigDebugAdapterEndpoints\endpoint-3371d724cc040005.txt
+	VSCODE_GIT_ASKPASS_EXTRA_ARGS=********************
+	VSCODE_GIT_ASKPASS_MAIN=********************
+	VSCODE_GIT_ASKPASS_NODE=********************
+	VSCODE_GIT_IPC_HANDLE=\\.\pipe\vscode-git-e0de185c20-sock
+	WINDIR=C:\WINDOWS
+	ZES_ENABLE_SYSMAN=1
+	_OLD_VIRTUAL_PATH=C:\Program Files\Common Files\Oracle\Java\javapath;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Users\welcome\AppData\Local\Programs\Python\Python313\python.exe;C:\Program Files\Git\cmd;C:\flutter\bin;C:\Program Files\dotnet\;C:\Android\cmdline-tools\latest\cmdline-tools\bin;C:\Users\welcome\AppData\Local\Microsoft\WindowsApps;C:\Users\welcome\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\welcome\AppData\Local\Programs\Python\Python313\Scripts;C:\Users\welcome\AppData\Local\Programs\Python\Python313;C:\Users\welcome\.dotnet\tools;c:\Users\welcome\.vscode\extensions\ms-python.debugpy-2025.8.0-win32-x64\bundled\scripts\noConfigScripts
+	_OLD_VIRTUAL_PROMPT=$P$G
+
+pyproject.toml:
+[project]
+name = "ace-vault"
+version = "1.0"
+license = {file = "LICENSE"}
+
+[build-system]
+requires = ["briefcase"]
+build-backend = "briefcase"
+
+[tool.briefcase]
+project_name = "Ace in the hole"
+bundle = "com.akhilkashyap.ace"
+version = "1.0"
+url = "https://github.com/akhilkashyap/ace-vault"
+author = "akhil kashyap"
+author_email = "akhil@example.com"
+
+[tool.briefcase.app.acevault]
+formal_name = "Ace in the hole"
+description = "A secure vault application with card games"
+module_name = "main"
+sources = ["."]
+test_sources = ["tests"]
+requires = [
+    "kivy==2.3.0",
+    "kivymd",
+    "plyer",
+    "pillow",
+    "requests",
+    "qrcode",
+    "imageio",
+    "bcrypt",
+    "cryptography",
+    "mutagen",
+]
+
+[tool.briefcase.app.acevault.android]
+requires = [
+    "kivy==2.3.0",
+    "kivymd",
+    "plyer",
+    "android",
+    "pyjnius",
+    "pillow",
+    "requests",
+    "qrcode",
+    "imageio",
+    "bcrypt",
+    "cryptography",
+    "mutagen",
+]
+permission.WRITE_EXTERNAL_STORAGE = "Store vault files securely"
+permission.READ_EXTERNAL_STORAGE = "Access vault files"
+permission.CAMERA = "Take photos for vault"
+permission.RECORD_AUDIO = "Record audio for vault"
+permission.CALL_PHONE = "Contact management features"
+permission.READ_PHONE_STATE = "Contact management features"
+
+Briefcase Log:
+[13:21:42] Saving log... started                                                                                                                                      console.py:433
+
+Main thread traceback:
+╭─────────────────────────────────────────────────────────────────────── Traceback (most recent call last) ────────────────────────────────────────────────────────────────────────╮
+│ C:\3-cards\venv\Lib\site-packages\briefcase\__main__.py:23 in main                                                                                                               │
+│                                                                                                                                                                                  │
+│   20 │   │   Command, extra_cmdline = parse_cmdline(sys.argv[1:], console=console)                                                                                               │
+│   21 │   │   command = Command(console=console)                                                                                                                                  │
+│   22 │   │   options, overrides = command.parse_options(extra=extra_cmdline)                                                                                                     │
+│ ❱ 23 │   │   command.parse_config(                                                                                                                                               │
+│   24 │   │   │   Path.cwd() / "pyproject.toml",                                                                                                                                  │
+│   25 │   │   │   overrides=overrides,                                                                                                                                            │
+│   26 │   │   )                                                                                                                                                                   │
+│                                                                                                                                                                                  │
+│ ╭─────────────────────────────────────────────── locals ────────────────────────────────────────────────╮                                                                        │
+│ │       command = <briefcase.platforms.android.gradle.GradleCreateCommand object at 0x0000024DF9A7BCB0> │                                                                        │
+│ │       console = <briefcase.console.Console object at 0x0000024DF9A79D30>                              │                                                                        │
+│ │ extra_cmdline = []                                                                                    │                                                                        │
+│ │       options = {}                                                                                    │                                                                        │
+│ │     overrides = {}                                                                                    │                                                                        │
+│ │        result = 0                                                                                     │                                                                        │
+│ ╰───────────────────────────────────────────────────────────────────────────────────────────────────────╯                                                                        │
+│                                                                                                                                                                                  │
+│ C:\3-cards\venv\Lib\site-packages\briefcase\commands\base.py:912 in parse_config                                                                                                 │
+│                                                                                                                                                                                  │
+│    909 │   │   │   │   │   # Construct an AppConfig object with the final set of                                                                                                 │
+│    910 │   │   │   │   │   # configuration options for the app.                                                                                                                  │
+│    911 │   │   │   │   │   app_config.update(overrides)                                                                                                                          │
+│ ❱  912 │   │   │   │   │   self.apps[app_name] = create_config(                                                                                                                  │
+│    913 │   │   │   │   │   │   klass=AppConfig,                                                                                                                                  │
+│    914 │   │   │   │   │   │   config=app_config,                                                                                                                                │
+│    915 │   │   │   │   │   │   msg=f"Configuration for '{app_name}'",                                                                                                            │
+│                                                                                                                                                                                  │
+│ ╭───────────────────────────────────────────────────────────────────────────── locals ─────────────────────────────────────────────────────────────────────────────╮             │
+│ │    app_config = {                                                                                                                                                │             │
+│ │                 │   'project_name': 'Ace in the hole',                                                                                                           │             │
+│ │                 │   'bundle': 'com.akhilkashyap.ace',                                                                                                            │             │
+│ │                 │   'version': '1.0',                                                                                                                            │             │
+│ │                 │   'url': 'https://github.com/akhilkashyap/ace-vault',                                                                                          │             │
+│ │                 │   'author': 'akhil kashyap',                                                                                                                   │             │
+│ │                 │   'author_email': 'akhil@example.com',                                                                                                         │             │
+│ │                 │   'license': {'file': 'LICENSE'},                                                                                                              │             │
+│ │                 │   'app_name': 'acevault',                                                                                                                      │             │
+│ │                 │   'requires': ['kivy==2.3.0', 'kivymd', 'plyer', 'pillow', 'requests', 'qrcode', 'imageio', 'bcrypt', 'cryptography', 'mutagen', ... +12],     │             │
+│ │                 │   'sources': ['.'],                                                                                                                            │             │
+│ │                 │   ... +5                                                                                                                                       │             │
+│ │                 }                                                                                                                                                │             │
+│ │   app_configs = {                                                                                                                                                │             │
+│ │                 │   'acevault': {                                                                                                                                │             │
+│ │                 │   │   'project_name': 'Ace in the hole',                                                                                                       │             │
+│ │                 │   │   'bundle': 'com.akhilkashyap.ace',                                                                                                        │             │
+│ │                 │   │   'version': '1.0',                                                                                                                        │             │
+│ │                 │   │   'url': 'https://github.com/akhilkashyap/ace-vault',                                                                                      │             │
+│ │                 │   │   'author': 'akhil kashyap',                                                                                                               │             │
+│ │                 │   │   'author_email': 'akhil@example.com',                                                                                                     │             │
+│ │                 │   │   'license': {'file': 'LICENSE'},                                                                                                          │             │
+│ │                 │   │   'app_name': 'acevault',                                                                                                                  │             │
+│ │                 │   │   'requires': [                                                                                                                            │             │
+│ │                 │   │   │   'kivy==2.3.0',                                                                                                                       │             │
+│ │                 │   │   │   'kivymd',                                                                                                                            │             │
+│ │                 │   │   │   'plyer',                                                                                                                             │             │
+│ │                 │   │   │   'pillow',                                                                                                                            │             │
+│ │                 │   │   │   'requests',                                                                                                                          │             │
+│ │                 │   │   │   'qrcode',                                                                                                                            │             │
+│ │                 │   │   │   'imageio',                                                                                                                           │             │
+│ │                 │   │   │   'bcrypt',                                                                                                                            │             │
+│ │                 │   │   │   'cryptography',                                                                                                                      │             │
+│ │                 │   │   │   'mutagen',                                                                                                                           │             │
+│ │                 │   │   │   ... +12                                                                                                                              │             │
+│ │                 │   │   ],                                                                                                                                       │             │
+│ │                 │   │   'sources': ['.'],                                                                                                                        │             │
+│ │                 │   │   ... +5                                                                                                                                   │             │
+│ │                 │   }                                                                                                                                            │             │
+│ │                 }                                                                                                                                                │             │
+│ │      app_name = 'acevault'                                                                                                                                       │             │
+│ │   config_file = <_io.BufferedReader name='C:\\3-cards\\ace\\com.shyapsneon.ace\\pyproject.toml'>                                                                 │             │
+│ │      filename = WindowsPath('C:/3-cards/ace/com.shyapsneon.ace/pyproject.toml')                                                                                  │             │
+│ │ global_config = {                                                                                                                                                │             │
+│ │                 │   'project_name': 'Ace in the hole',                                                                                                           │             │
+│ │                 │   'bundle': 'com.akhilkashyap.ace',                                                                                                            │             │
+│ │                 │   'version': '1.0',                                                                                                                            │             │
+│ │                 │   'url': 'https://github.com/akhilkashyap/ace-vault',                                                                                          │             │
+│ │                 │   'author': 'akhil kashyap',                                                                                                                   │             │
+│ │                 │   'author_email': 'akhil@example.com',                                                                                                         │             │
+│ │                 │   'license': {'file': 'LICENSE'}                                                                                                               │             │
+│ │                 }                                                                                                                                                │             │
+│ │     overrides = {}                                                                                                                                               │             │
+│ │          self = <briefcase.platforms.android.gradle.GradleCreateCommand object at 0x0000024DF9A7BCB0>                                                            │             │
+│ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯             │
+│                                                                                                                                                                                  │
+│ C:\3-cards\venv\Lib\site-packages\briefcase\commands\base.py:50 in create_config                                                                                                 │
+│                                                                                                                                                                                  │
+│     47                                                                                                                                                                           │
+│     48 def create_config(klass, config, msg):                                                                                                                                    │
+│     49 │   try:                                                                                                                                                                  │
+│ ❱   50 │   │   return klass(**config)                                                                                                                                            │
+│     51 │   except TypeError as e:                                                                                                                                                │
+│     52 │   │   # Inspect the GlobalConfig constructor to find which                                                                                                              │
+│     53 │   │   # parameters are required and don't have a default value.                                                                                                         │
+│                                                                                                                                                                                  │
+│ ╭─────────────────────────────────────────────────────────────────────── locals ────────────────────────────────────────────────────────────────────────╮                        │
+│ │ config = {                                                                                                                                            │                        │
+│ │          │   'project_name': 'Ace in the hole',                                                                                                       │                        │
+│ │          │   'bundle': 'com.akhilkashyap.ace',                                                                                                        │                        │
+│ │          │   'version': '1.0',                                                                                                                        │                        │
+│ │          │   'url': 'https://github.com/akhilkashyap/ace-vault',                                                                                      │                        │
+│ │          │   'author': 'akhil kashyap',                                                                                                               │                        │
+│ │          │   'author_email': 'akhil@example.com',                                                                                                     │                        │
+│ │          │   'license': {'file': 'LICENSE'},                                                                                                          │                        │
+│ │          │   'app_name': 'acevault',                                                                                                                  │                        │
+│ │          │   'requires': [                                                                                                                            │                        │
+│ │          │   │   'kivy==2.3.0',                                                                                                                       │                        │
+│ │          │   │   'kivymd',                                                                                                                            │                        │
+│ │          │   │   'plyer',                                                                                                                             │                        │
+│ │          │   │   'pillow',                                                                                                                            │                        │
+│ │          │   │   'requests',                                                                                                                          │                        │
+│ │          │   │   'qrcode',                                                                                                                            │                        │
+│ │          │   │   'imageio',                                                                                                                           │                        │
+│ │          │   │   'bcrypt',                                                                                                                            │                        │
+│ │          │   │   'cryptography',                                                                                                                      │                        │
+│ │          │   │   'mutagen',                                                                                                                           │                        │
+│ │          │   │   ... +12                                                                                                                              │                        │
+│ │          │   ],                                                                                                                                       │                        │
+│ │          │   'sources': ['.'],                                                                                                                        │                        │
+│ │          │   ... +5                                                                                                                                   │                        │
+│ │          }                                                                                                                                            │                        │
+│ │    msg = "Configuration for 'acevault'"                                                                                                               │                        │
+│ ╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯                        │
+│                                                                                                                                                                                  │
+│ C:\3-cards\venv\Lib\site-packages\briefcase\config.py:290 in __init__                                                                                                            │
+│                                                                                                                                                                                  │
+│   287 │   │   requirement_installer_args: list[str] | None = None,                                                                                                               │
+│   288 │   │   **kwargs,                                                                                                                                                          │
+│   289 │   ):                                                                                                                                                                     │
+│ ❱ 290 │   │   super().__init__(**kwargs)                                                                                                                                         │
+│   291 │   │                                                                                                                                                                      │
+│   292 │   │   # All app configs are created in unfinalized draft form.                                                                                                           │
+│   293 │   │   self.__draft__ = True                                                                                                                                              │
+│                                                                                                                                                                                  │
+│ ╭───────────────────────────────────────────────────────────────────────── locals ─────────────────────────────────────────────────────────────────────────╮                     │
+│ │                   app_name = 'acevault'                                                                                                                  │                     │
+│ │                     author = 'akhil kashyap'                                                                                                             │                     │
+│ │               author_email = 'akhil@example.com'                                                                                                         │                     │
+│ │                     bundle = 'com.akhilkashyap.ace'                                                                                                      │                     │
+│ │                console_app = False                                                                                                                       │                     │
+│ │                description = 'A secure vault application with card games'                                                                                │                     │
+│ │              document_type = None                                                                                                                        │                     │
+│ │                formal_name = 'Ace in the hole'                                                                                                           │                     │
+│ │                       icon = None                                                                                                                        │                     │
+│ │                     kwargs = {'project_name': 'Ace in the hole', 'module_name': 'main'}                                                                  │                     │
+│ │                    license = {'file': 'LICENSE'}                                                                                                         │                     │
+│ │           long_description = None                                                                                                                        │                     │
+│ │                 permission = {                                                                                                                           │                     │
+│ │                              │   'WRITE_EXTERNAL_STORAGE': 'Store vault files securely',                                                                 │                     │
+│ │                              │   'READ_EXTERNAL_STORAGE': 'Access vault files',                                                                          │                     │
+│ │                              │   'CAMERA': 'Take photos for vault',                                                                                      │                     │
+│ │                              │   'RECORD_AUDIO': 'Record audio for vault',                                                                               │                     │
+│ │                              │   'CALL_PHONE': 'Contact management features',                                                                            │                     │
+│ │                              │   'READ_PHONE_STATE': 'Contact management features'                                                                       │                     │
+│ │                              }                                                                                                                           │                     │
+│ │ requirement_installer_args = None                                                                                                                        │                     │
+│ │                   requires = ['kivy==2.3.0', 'kivymd', 'plyer', 'pillow', 'requests', 'qrcode', 'imageio', 'bcrypt', 'cryptography', 'mutagen', ... +12] │                     │
+│ │                       self = <repr-error "'AppConfig' object has no attribute 'bundle'">                                                                 │                     │
+│ │                    sources = ['.']                                                                                                                       │                     │
+│ │                  supported = True                                                                                                                        │                     │
+│ │                   template = None                                                                                                                        │                     │
+│ │            template_branch = None                                                                                                                        │                     │
+│ │              test_requires = None                                                                                                                        │                     │
+│ │               test_sources = ['tests']                                                                                                                   │                     │
+│ │                        url = 'https://github.com/akhilkashyap/ace-vault'                                                                                 │                     │
+│ │                    version = '1.0'                                                                                                                       │                     │
+│ ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯                     │
+│                                                                                                                                                                                  │
+│ C:\3-cards\venv\Lib\site-packages\briefcase\config.py:225 in __init__                                                                                                            │
+│                                                                                                                                                                                  │
+│   222 class BaseConfig:                                                                        ╭─────────────────────────────── locals ───────────────────────────────╮          │
+│   223 │   def __init__(self, **kwargs):                                                        │   attr = 'module_name'                                               │          │
+│   224 │   │   for attr, value in kwargs.items():                                               │ kwargs = {'project_name': 'Ace in the hole', 'module_name': 'main'}  │          │
+│ ❱ 225 │   │   │   setattr(self, attr, value)                                                   │   self = <repr-error "'AppConfig' object has no attribute 'bundle'"> │          │
+│   226                                                                                          │  value = 'main'                                                      │          │
+│   227                                                                                          ╰──────────────────────────────────────────────────────────────────────╯          │
+│   228 class GlobalConfig(BaseConfig):                                                                                                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+AttributeError: property 'module_name' of 'AppConfig' object has no setter
