@@ -21,16 +21,42 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential python3-dev libffi-dev libssl-dev
+        sudo apt-get install -y \
+          build-essential \
+          python3-dev \
+          libffi-dev \
+          libssl-dev \
+          xvfb \
+          libgl1-mesa-glx \
+          libglib2.0-0 \
+          libxkbcommon-x11-0 \
+          libfontconfig1 \
+          libxrender1 \
+          libdbus-1-3 \
+          libxi6 \
+          libxtst6 \
+          libegl1-mesa \
+          libxrandr2 \
+          libasound2-dev \
+          libpulse-dev \
+          libjack-jackd2-dev \
+          portaudio19-dev \
+          libmtdev1 \
+          libgl1-mesa-dev \
+          libgles2-mesa-dev
     
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install kivy kivymd pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
+        pip install kivy pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
+        pip install https://github.com/kivymd/KivyMD/archive/master.zip
     
-    - name: Build with PyInstaller
+    - name: Build with PyInstaller (Linux)
       run: |
-        pyinstaller --onefile --windowed \
+        export KIVY_WINDOW=sdl2
+        export KIVY_GL_BACKEND=gl
+        export DISPLAY=:99
+        xvfb-run -a -s "-screen 0 1024x768x24" pyinstaller --onefile --windowed \
           --name "AceVault-Linux" \
           --hidden-import kivymd \
           --hidden-import kivymd.uix \
@@ -42,8 +68,6 @@ jobs:
           --hidden-import qrcode \
           --hidden-import requests \
           --hidden-import PIL \
-          --collect-submodules plyer \
-          --collect-submodules kivymd \
           main.py
     
     - name: Upload Linux Executable
@@ -65,11 +89,13 @@ jobs:
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install kivy kivymd pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
+        pip install kivy pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
+        pip install https://github.com/kivymd/KivyMD/archive/master.zip
     
-    - name: Build with PyInstaller
+    - name: Build with PyInstaller (Windows)
       run: |
-        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import plyer --hidden-import plyer.platforms --hidden-import cryptography --hidden-import bcrypt --hidden-import pygame --hidden-import qrcode --hidden-import requests --hidden-import PIL --collect-submodules plyer --collect-submodules kivymd main.py
+        $env:KIVY_GL_BACKEND = "angle_sdl2"
+        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import plyer --hidden-import plyer.platforms --hidden-import cryptography --hidden-import bcrypt --hidden-import pygame --hidden-import qrcode --hidden-import requests --hidden-import PIL main.py
     
     - name: Upload Windows Executable
       uses: actions/upload-artifact@v4
@@ -90,10 +116,13 @@ jobs:
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip
-        pip install kivy kivymd pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
+        pip install kivy pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
+        pip install https://github.com/kivymd/KivyMD/archive/master.zip
     
-    - name: Build with PyInstaller
+    - name: Build with PyInstaller (macOS)
       run: |
+        export KIVY_WINDOW=sdl2
+        export KIVY_GL_BACKEND=gl
         pyinstaller --onefile --windowed \
           --name "AceVault-macOS" \
           --hidden-import kivymd \
@@ -106,8 +135,6 @@ jobs:
           --hidden-import qrcode \
           --hidden-import requests \
           --hidden-import PIL \
-          --collect-submodules plyer \
-          --collect-submodules kivymd \
           main.py
     
     - name: Upload macOS Executable
