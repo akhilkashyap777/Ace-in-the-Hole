@@ -27,7 +27,7 @@ jobs:
           libffi-dev \
           libssl-dev \
           xvfb \
-          libgl1-mesa-glx \
+          libgl1-mesa-dri \
           libglib2.0-0 \
           libxkbcommon-x11-0 \
           libfontconfig1 \
@@ -35,7 +35,7 @@ jobs:
           libdbus-1-3 \
           libxi6 \
           libxtst6 \
-          libegl1-mesa \
+          libegl1-mesa-dev \
           libxrandr2 \
           libasound2-dev \
           libpulse-dev \
@@ -56,7 +56,8 @@ jobs:
         export KIVY_WINDOW=sdl2
         export KIVY_GL_BACKEND=gl
         export DISPLAY=:99
-        xvfb-run -a -s "-screen 0 1024x768x24" pyinstaller --onefile --windowed \
+        export SDL_VIDEODRIVER=dummy
+        xvfb-run -a -s "-screen 0 1024x768x24" pyinstaller --onedir --windowed \
           --name "AceVault-Linux" \
           --hidden-import kivymd \
           --hidden-import kivymd.uix \
@@ -74,34 +75,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: AceVault-Linux
-        path: dist/AceVault-Linux
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install Python dependencies
-      run: |
-        pip install --upgrade pip
-        pip install kivy pillow requests qrcode pygame bcrypt plyer cryptography pyinstaller
-        pip install https://github.com/kivymd/KivyMD/archive/master.zip
-    
-    - name: Build with PyInstaller (Windows)
-      run: |
-        $env:KIVY_GL_BACKEND = "angle_sdl2"
-        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import plyer --hidden-import plyer.platforms --hidden-import cryptography --hidden-import bcrypt --hidden-import pygame --hidden-import qrcode --hidden-import requests --hidden-import PIL main.py
-    
-    - name: Upload Windows Executable
-      uses: actions/upload-artifact@v4
-      with:
-        name: AceVault-Windows
-        path: dist/AceVault-Windows.exe
+        path: dist/AceVault-Linux/
 
   build-macos:
     runs-on: macos-latest
@@ -123,7 +97,8 @@ jobs:
       run: |
         export KIVY_WINDOW=sdl2
         export KIVY_GL_BACKEND=gl
-        pyinstaller --onefile --windowed \
+        export SDL_VIDEODRIVER=dummy
+        pyinstaller --onedir --windowed \
           --name "AceVault-macOS" \
           --hidden-import kivymd \
           --hidden-import kivymd.uix \
@@ -141,4 +116,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: AceVault-macOS
-        path: dist/AceVault-macOS
+        path: dist/AceVault-macOS/
