@@ -9,34 +9,38 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller kivy kivymd pillow requests qrcode bcrypt cryptography pygame plyer pywin32
-        
-    - name: Set Kivy environment variables globally
-      run: |
-        echo "KIVY_NO_CONSOLELOG=1" >> $env:GITHUB_ENV
-        echo "KIVY_WINDOW=dummy" >> $env:GITHUB_ENV
-        echo "KIVY_GL_BACKEND=mock" >> $env:GITHUB_ENV
-        echo "KIVY_NO_ARGS=1" >> $env:GITHUB_ENV
-        echo "KIVY_NO_WINDOW=1" >> $env:GITHUB_ENV
-      shell: pwsh
-        
-    - name: Build Windows executable (simple approach)
-      run: |
-        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.font_definitions main.py
-        
-    - name: Upload Windows artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: acevault-windows
-        path: dist/AceVault-Windows.exe
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller kivy kivymd pillow requests qrcode bcrypt cryptography pygame plyer pywin32
+
+      - name: Set Kivy environment variables for build
+        run: |
+          echo KIVY_NO_ARGS=1 >> %GITHUB_ENV%
+          echo KIVY_NO_WINDOW=1 >> %GITHUB_ENV%
+          echo KIVY_WINDOW=dummy >> %GITHUB_ENV%
+          echo KIVY_GL_BACKEND=mock >> %GITHUB_ENV%
+        shell: cmd
+
+      - name: Build Windows executable
+        run: |
+          set KIVY_NO_ARGS=1
+          set KIVY_NO_WINDOW=1
+          set KIVY_WINDOW=dummy
+          set KIVY_GL_BACKEND=mock
+          pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.font_definitions main.py
+        shell: cmd
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: acevault-windows
+          path: dist/AceVault-Windows.exe
