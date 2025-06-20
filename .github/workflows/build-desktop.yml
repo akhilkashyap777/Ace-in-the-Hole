@@ -22,17 +22,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller kivy kivymd pillow requests qrcode bcrypt cryptography pygame plyer
         
-    - name: Build Windows executable
+    - name: Set Kivy environment variables globally
       run: |
-        pyinstaller --onedir --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.icon_definitions.md_icons --hidden-import kivymd.font_definitions --hidden-import kivymd.material_resources --hidden-import kivymd.uix.boxlayout --hidden-import kivymd.uix.label --hidden-import kivymd.uix.button --hidden-import kivymd.uix.card --hidden-import kivymd.uix.gridlayout --hidden-import kivymd.uix.scrollview --hidden-import plyer --hidden-import plyer.platforms --hidden-import cryptography --hidden-import bcrypt --hidden-import pygame --hidden-import qrcode --hidden-import requests --hidden-import PIL main.py
-      env:
-        KIVY_WINDOW: dummy
-        KIVY_GL_BACKEND: mock
-        KIVY_NO_ARGS: 1
-        DISPLAY: ""
+        echo "KIVY_NO_CONSOLELOG=1" >> $env:GITHUB_ENV
+        echo "KIVY_WINDOW=dummy" >> $env:GITHUB_ENV
+        echo "KIVY_GL_BACKEND=mock" >> $env:GITHUB_ENV
+        echo "KIVY_NO_ARGS=1" >> $env:GITHUB_ENV
+        echo "KIVY_NO_WINDOW=1" >> $env:GITHUB_ENV
+        
+    - name: Build Windows executable (simple approach)
+      run: |
+        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.font_definitions --hidden-import kivymd.material_resources --hidden-import plyer --hidden-import plyer.platforms --hidden-import cryptography --hidden-import bcrypt --hidden-import pygame --hidden-import qrcode --hidden-import requests --hidden-import PIL main.py
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
         name: acevault-windows
-        path: dist/AceVault-Windows/
+        path: dist/AceVault-Windows.exe
