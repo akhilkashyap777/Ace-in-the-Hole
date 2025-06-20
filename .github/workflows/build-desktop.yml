@@ -33,7 +33,7 @@ jobs:
         
     - name: Build Windows executable (simple approach)
       run: |
-        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.font_definitions ...
+        pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.font_definitions main.py
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
