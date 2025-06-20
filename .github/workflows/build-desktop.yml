@@ -22,21 +22,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller kivy kivymd pillow requests qrcode bcrypt cryptography pygame plyer pywin32
 
+      - name: Post-install pywin32
+        run: python -m pywin32_postinstall -install
+
       - name: Set Kivy environment variables for build
         run: |
           echo KIVY_NO_ARGS=1 >> %GITHUB_ENV%
           echo KIVY_NO_WINDOW=1 >> %GITHUB_ENV%
           echo KIVY_WINDOW=dummy >> %GITHUB_ENV%
           echo KIVY_GL_BACKEND=mock >> %GITHUB_ENV%
-        shell: cmd
 
       - name: Build Windows executable
         run: |
-          set KIVY_NO_ARGS=1
-          set KIVY_NO_WINDOW=1
-          set KIVY_WINDOW=dummy
-          set KIVY_GL_BACKEND=mock
-          pyinstaller --onefile --windowed --name "AceVault-Windows" --hidden-import kivymd --hidden-import kivymd.uix --hidden-import kivymd.icon_definitions --hidden-import kivymd.font_definitions main.py
+          pyinstaller --onefile --windowed --name "AceVault-Windows" ^
+            --hidden-import=kivymd ^
+            --hidden-import=kivymd.uix ^
+            --hidden-import=kivymd.icon_definitions ^
+            --hidden-import=kivymd.font_definitions ^
+            --hidden-import=win32com ^
+            --hidden-import=win32com.server ^
+            --hidden-import=win32com.server.exception ^
+            --hidden-import=win32com.server.policy ^
+            --hidden-import=win32com.server.util ^
+            --hidden-import=win32com.server.dispatcher ^
+            --hidden-import=win32com.util ^
+            --hidden-import=pythoncom ^
+            main.py
         shell: cmd
 
       - name: Upload Windows artifact
