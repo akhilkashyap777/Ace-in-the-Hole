@@ -1,0 +1,708 @@
+import os
+import shutil
+import threading
+import gc
+import re
+from datetime import datetime
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.label import MDLabel
+from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.card import MDCard
+from kivy.uix.image import Image
+from kivy.clock import Clock
+from kivy.metrics import dp
+from video_camera_module import VideoCameraModule
+
+# Import the core video vault functionality
+from video_vault_core import VideoVaultCore, ANDROID
+
+# Import dialog components
+from video_vault_dialogs import (
+    show_import_results_dialog,
+    show_file_movement_confirmation,
+    show_fallback_file_picker,
+    show_video_options_dialog,
+    show_delete_confirmation_dialog,
+    show_export_dialog,
+    show_export_result_dialog,
+    show_no_selection_popup,
+    show_error_popup
+)
+
+# Import Android/Desktop specific modules for file selection
+if not ANDROID:
+    import tkinter as tk
+    from tkinter import filedialog
+else:
+    try:
+        from plyer import filechooser
+        from android.storage import primary_external_storage_path
+    except ImportError:
+        pass
+
+class VideoVault(VideoVaultCore):
+    """Main Video Vault class that combines core functionality with UI methods"""
+    
+    def select_videos_from_gallery(self, callback):
+        """Open gallery/file picker to select videos"""
+        if self.processing:
+            print("Already processing, ignoring request")
+            return
+            
+        self.processing = True
+        print("Starting video selection from gallery...")
+        
+        if ANDROID:
+            try:
+                def on_selection(selection):
+                    Clock.schedule_once(lambda dt: self.handle_selection_async(selection, callback), 0)
+                
+                filechooser.open_file(
+                    on_selection=on_selection,
+                    multiple=True,
+                    filters=['*.mp4', '*.avi', '*.mov', '*.mkv', '*.wmv', '*.flv', '*.webm', '*.3gp', '*.ogg', '*.ogv']
+                )
+            except Exception as e:
+                print(f"Error opening Android file chooser: {e}")
+                self.processing = False
+                self.fallback_file_picker(callback)
+        else:
+            self.desktop_file_picker(callback)
+    
+    def desktop_file_picker(self, callback):
+        """Desktop file picker using tkinter"""
+        def pick_files():
+            try:
+                root = tk.Tk()
+                root.withdraw()  # Hide the main window
+                
+                file_paths = filedialog.askopenfilenames(
+                    title="Select Videos",
+                    filetypes=[
+                        ("Video files", "*.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.3gp *.ogg *.ogv"),
+                        ("All files", "*.*")
+                    ]
+                )
+                
+                root.destroy()
+                
+                # Schedule callback on main thread
+                Clock.schedule_once(lambda dt: self.handle_selection_async(file_paths, callback), 0)
+                
+            except Exception as e:
+                print(f"Desktop file picker error: {e}")
+                self.processing = False
+        
+        # Run in separate thread to avoid blocking
+        thread = threading.Thread(target=pick_files)
+        thread.daemon = True
+        thread.start()
+    
+    def fallback_file_picker(self, callback):
+        """Fallback file picker using Kivy's FileChooser"""
+        def on_selection_callback(file_paths):
+            self.handle_selection_async(file_paths, callback)
+        
+        show_fallback_file_picker(on_selection_callback)
+    
+    def handle_selection_async(self, file_paths, callback):
+        """Handle selected video files asynchronously"""
+        if not file_paths:
+            self.processing = False
+            return
+        
+        print(f"Selected {len(file_paths)} files for processing")
+        # Show confirmation dialog for file movement
+        show_file_movement_confirmation(file_paths, lambda fps, move_files: self.process_files(fps, callback, move_files))
+    
+    def process_files(self, file_paths, callback, move_files=True):
+        """Process selected video files"""
+        def process_files_worker():
+            try:
+                imported_files = []
+                
+                for file_path in file_paths:
+                    try:
+                        print(f"Processing file: {file_path}")
+                        
+                        # Check if it's a valid video file
+                        if not self.is_valid_video(file_path):
+                            print(f"Skipping invalid video file: {file_path}")
+                            continue
+                        
+                        # Generate unique filename
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                        filename = f"vault_{timestamp}_{os.path.basename(file_path)}"
+                        destination = os.path.join(self.vault_dir, filename)
+                        
+                        # Move or copy file to vault directory
+                        if move_files:
+                            print(f"Moving file to: {destination}")
+                            shutil.move(file_path, destination)  # MOVE instead of copy
+                        else:
+                            print(f"Copying file to: {destination}")
+                            shutil.copy2(file_path, destination)  # COPY for less secure option
+                        
+                        # Generate thumbnail with proper cleanup
+                        self.generate_thumbnail_safe(destination)
+                        
+                        imported_files.append(destination)
+                        print(f"Successfully processed: {destination}")
+                        
+                    except Exception as e:
+                        print(f"Error processing file {file_path}: {e}")
+                
+                print(f"File processing complete. {len(imported_files)} files imported.")
+                # Schedule callback on main thread
+                Clock.schedule_once(lambda dt: self.finish_import(imported_files, callback, move_files), 0)
+                
+            except Exception as e:
+                print(f"Error processing files: {e}")
+                Clock.schedule_once(lambda dt: self.finish_import([], callback, move_files), 0)
+        
+        # Run file operations in background thread
+        thread = threading.Thread(target=process_files_worker)
+        thread.daemon = True
+        thread.start()
+    
+    def finish_import(self, imported_files, callback, moved_files):
+        """Finish import process on main thread"""
+        self.processing = False
+        if imported_files:
+            callback(imported_files, moved_files)
+    
+    def create_video_gallery_widget(self):
+        """Create the main video gallery widget"""
+        return VideoGalleryWidget(self)
+
+class VideoGalleryWidget(MDBoxLayout):
+    """UI Widget for managing video gallery with BlueGray theme"""
+    
+    def __init__(self, video_vault, **kwargs):
+        super().__init__(orientation='vertical', **kwargs)
+        self.video_vault = video_vault
+        self.vault_core = video_vault  # Add this line for camera module compatibility
+        self.selected_video = None
+        self.video_widgets = []  # Keep track of video widgets for cleanup
+        
+        # Initialize camera module
+        self.camera_module = VideoCameraModule(self)
+        
+        # Set BlueGray background
+        self.md_bg_color = [0.37, 0.49, 0.55, 1]
+        
+        self.build_ui()
+        
+        # Load initial videos
+        Clock.schedule_once(lambda dt: self.refresh_gallery(None), 0.1)
+    
+    def build_ui(self):
+        """Build the main UI layout"""
+        # Header with title and add button
+        self.build_header()
+        
+        # Video grid in scroll view
+        self.build_video_grid()
+        
+        # Bottom action buttons
+        self.build_bottom_buttons()
+    
+    def build_header(self):
+        """Build header with title and add button"""
+        header = MDBoxLayout(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(120),
+            padding=[20, 20, 20, 10],
+            spacing=10
+        )
+        
+        # Large title
+        title = MDLabel(
+            text='VIDEO GALLERY',
+            font_style="H3",
+            text_color="white",
+            halign="center",
+            bold=True
+        )
+        header.add_widget(title)
+        
+        # Action buttons row
+        actions_row = MDBoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(40),
+            spacing=15
+        )
+        
+        self.add_btn = MDRaisedButton(
+            text='🎬 Add Videos',
+            md_bg_color=[0.2, 0.7, 0.3, 1],
+            text_color="white",
+            size_hint_x=1,
+            elevation=3
+        )
+        self.add_btn.bind(on_press=self.add_videos)
+        actions_row.add_widget(self.add_btn)
+        
+        header.add_widget(actions_row)
+        
+        # Add camera buttons
+        camera_buttons = self.camera_module.build_camera_buttons()
+        header.add_widget(camera_buttons)
+        
+        self.add_widget(header)
+    
+    def build_video_grid(self):
+        """Build scrollable video grid"""
+        scroll = MDScrollView(
+            bar_width=dp(4),
+            bar_color=[0.46, 0.53, 0.6, 0.7],
+            bar_inactive_color=[0.7, 0.7, 0.7, 0.3],
+            effect_cls="ScrollEffect"
+        )
+        
+        self.video_grid = MDGridLayout(
+            cols=2,
+            spacing=15,
+            padding=[20, 10, 20, 10],
+            size_hint_y=None,
+            adaptive_height=True
+        )
+        
+        scroll.add_widget(self.video_grid)
+        self.add_widget(scroll)
+    
+    def build_bottom_buttons(self):
+        """Build bottom action buttons"""
+        bottom_bar = MDCard(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=dp(70),
+            padding=15,
+            spacing=12,
+            elevation=8,
+            md_bg_color=[0.25, 0.29, 0.31, 1]  # BlueGray dark
+        )
+        
+        self.refresh_btn = MDFlatButton(
+            text='🔄 Refresh',
+            text_color="white",
+            size_hint_x=0.25
+        )
+        self.refresh_btn.bind(on_press=self.refresh_gallery)
+        bottom_bar.add_widget(self.refresh_btn)
+        
+        self.export_btn = MDFlatButton(
+            text='📤 Export',
+            text_color=[0.6, 0.4, 0.9, 1],
+            size_hint_x=0.25
+        )
+        self.export_btn.bind(on_press=self.export_selected_video)
+        bottom_bar.add_widget(self.export_btn)
+        
+        self.add_more_btn = MDFlatButton(
+            text='➕ Add More',
+            text_color=[0.4, 0.8, 0.4, 1],
+            size_hint_x=0.25
+        )
+        self.add_more_btn.bind(on_press=self.add_videos)
+        bottom_bar.add_widget(self.add_more_btn)
+        
+        self.back_btn = MDFlatButton(
+            text='← Back',
+            text_color=[0.7, 0.7, 0.7, 1],
+            size_hint_x=0.25
+        )
+        self.back_btn.bind(on_press=self.back_to_vault)
+        bottom_bar.add_widget(self.back_btn)
+        
+        self.add_widget(bottom_bar)
+    
+    def add_videos(self, instance):
+        """Handle add videos button press"""
+        # Disable button during processing
+        if self.video_vault.processing:
+            print("Video vault is already processing, ignoring add request")
+            return
+            
+        self.add_btn.disabled = True
+        self.add_btn.text = 'Processing...'
+        
+        self.video_vault.request_permissions()
+        
+        def on_videos_added(imported_files, moved_files):
+            # Re-enable button
+            self.add_btn.disabled = False
+            self.add_btn.text = '🎬 Add Videos'
+            
+            if imported_files:
+                # Refresh gallery
+                self.refresh_gallery(None)
+                
+                # Show success message using dialog
+                show_import_results_dialog(imported_files, moved_files)
+        
+        self.video_vault.select_videos_from_gallery(on_videos_added)
+    
+    def refresh_gallery(self, instance):
+        """Refresh the video gallery"""
+        print("Refreshing video gallery...")
+        
+        # Clean up resources first
+        self.video_vault.cleanup_video_players()
+        self.video_vault.cleanup_all_imageio_readers()
+        
+        # Clear existing widgets
+        self.cleanup_video_widgets()
+        self.video_grid.clear_widgets()
+        
+        # Force garbage collection
+        gc.collect()
+        
+        videos = self.video_vault.get_vault_videos()
+        print(f"Found {len(videos)} videos in vault")
+        
+        if not videos:
+            # Show empty state
+            empty_widget = self.create_empty_state_widget()
+            self.video_grid.add_widget(empty_widget)
+            return
+        
+        # Load videos in batches to avoid memory issues
+        self.load_videos_batch(videos, 0)
+    
+    def create_empty_state_widget(self):
+        """Create empty state widget"""
+        empty_card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(200),
+            padding=30,
+            spacing=20,
+            md_bg_color=[0.31, 0.35, 0.39, 0.8],  # BlueGray light
+            elevation=2
+        )
+        
+        empty_label = MDLabel(
+            text='🎬 No videos in vault\n\nTap "Add Videos" to import your videos\nfrom gallery and keep them secure',
+            font_style="Body1",
+            halign='center',
+            text_color=[0.7, 0.7, 0.7, 1]
+        )
+        empty_label.bind(size=empty_label.setter('text_size'))
+        empty_card.add_widget(empty_label)
+        
+        return empty_card
+    
+    def load_videos_batch(self, videos, start_index, batch_size=4):
+        """Load videos in batches to prevent memory issues"""
+        end_index = min(start_index + batch_size, len(videos))
+        
+        print(f"Loading videos batch {start_index} to {end_index}")
+        
+        for i in range(start_index, end_index):
+            video_path = videos[i]
+            video_widget = self.create_video_widget(video_path)
+            self.video_grid.add_widget(video_widget)
+            self.video_widgets.append(video_widget)
+        
+        # Load next batch if there are more videos
+        if end_index < len(videos):
+            Clock.schedule_once(lambda dt: self.load_videos_batch(videos, end_index), 0.1)
+    
+    def cleanup_video_widgets(self):
+        """Clean up video widgets to prevent memory leaks"""
+        print(f"Cleaning up {len(self.video_widgets)} video widgets")
+        for widget in self.video_widgets:
+            try:
+                if hasattr(widget, 'children'):
+                    for child in widget.children:
+                        if hasattr(child, 'texture'):
+                            child.texture = None
+            except:
+                pass
+        self.video_widgets.clear()
+        
+        # Force garbage collection
+        gc.collect()
+    
+    def create_video_widget(self, video_path):
+        """Create a widget for displaying a video thumbnail with modern design"""
+        is_selected = self.selected_video == video_path
+        
+        # Main card with modern styling
+        video_card = MDCard(
+            orientation='vertical',
+            size_hint_y=None,
+            height=dp(280),
+            padding=10,
+            spacing=8,
+            elevation=4 if is_selected else 2,
+            md_bg_color=[0.46, 0.53, 0.6, 1] if is_selected else [0.31, 0.35, 0.39, 0.9],
+            ripple_behavior=True
+        )
+        
+        # Thumbnail container
+        thumbnail_container = MDBoxLayout(size_hint_y=0.7)
+        
+        try:
+            # Try to use thumbnail if available
+            thumb_path = self.video_vault.get_thumbnail_path(video_path)
+            
+            if thumb_path and os.path.exists(thumb_path):
+                print(f"Loading thumbnail: {thumb_path}")
+                # Create image widget
+                img = Image(
+                    source=thumb_path,
+                    fit_mode="cover"
+                )
+                thumbnail_container.add_widget(img)
+                
+            else:
+                # Fallback: create a visible widget with video icon
+                fallback_container = MDBoxLayout(orientation='vertical', spacing=5)
+                
+                icon_label = MDLabel(
+                    text='🎬',
+                    font_style="H2",
+                    halign="center",
+                    text_color="white"
+                )
+                fallback_container.add_widget(icon_label)
+                
+                tap_label = MDLabel(
+                    text='Tap to Select',
+                    font_style="Caption",
+                    halign="center",
+                    text_color=[0.8, 0.8, 0.8, 1]
+                )
+                fallback_container.add_widget(tap_label)
+                
+                thumbnail_container.add_widget(fallback_container)
+                
+        except Exception as e:
+            print(f"Error loading thumbnail for {video_path}: {e}")
+            # Error fallback
+            error_container = MDBoxLayout(orientation='vertical', spacing=5)
+            
+            error_icon = MDLabel(
+                text='🎬',
+                font_style="H2",
+                halign="center",
+                text_color=[1, 0.6, 0.6, 1]  # Light red
+            )
+            error_container.add_widget(error_icon)
+            
+            error_label = MDLabel(
+                text='Video\n(Tap to Select)',
+                font_style="Caption",
+                halign="center",
+                text_color=[1, 0.6, 0.6, 1]
+            )
+            error_container.add_widget(error_label)
+            
+            thumbnail_container.add_widget(error_container)
+        
+        video_card.add_widget(thumbnail_container)
+        
+        # Video info section
+        info_layout = MDBoxLayout(
+            orientation='vertical',
+            size_hint_y=0.3,
+            spacing=3
+        )
+        
+        # Video filename
+        filename = os.path.basename(video_path)
+        display_name = filename[:20] + '...' if len(filename) > 20 else filename
+        
+        name_label = MDLabel(
+            text=display_name,
+            font_style="Subtitle2",
+            text_color="white",
+            halign="center",
+            bold=True if is_selected else False
+        )
+        info_layout.add_widget(name_label)
+        
+        # Get video info safely
+        video_info = self.video_vault.get_video_info_safe(video_path)
+        
+        # Video details
+        details_text = f"{video_info['size']} | {video_info['duration']}"
+        if is_selected:
+            details_text += "\n🔴 SELECTED"
+        
+        details_label = MDLabel(
+            text=details_text,
+            font_style="Caption",
+            text_color=[0.9, 0.9, 0.9, 1] if is_selected else [0.7, 0.7, 0.7, 1],
+            halign="center"
+        )
+        info_layout.add_widget(details_label)
+        
+        video_card.add_widget(info_layout)
+        
+        # Make entire card clickable
+        video_card.bind(on_release=lambda x: self.select_video(video_path))
+        
+        return video_card
+    
+    def select_video(self, video_path):
+        """Select a video and show enhanced options dialog"""
+        self.selected_video = video_path
+        print(f"Selected video: {video_path}")
+        
+        # Refresh the gallery to show selection indicator
+        self.refresh_gallery(None)
+        
+        # Show video options dialog
+        show_video_options_dialog(
+            video_path,
+            self.video_vault,
+            lambda: self.refresh_gallery(None),
+            lambda: self.export_selected_video(None),
+            self.enhanced_delete_video
+        )
+    
+    def enhanced_delete_video(self, video_path):
+        """Enhanced delete with recycle bin"""
+        def refresh_and_clear():
+            self.selected_video = None
+            self.refresh_gallery(None)
+        
+        show_delete_confirmation_dialog(video_path, self.video_vault, refresh_and_clear)
+    
+    def export_selected_video(self, instance):
+        """Export the selected video with folder selection"""
+        if not self.selected_video:
+            show_no_selection_popup("export")
+            return
+        
+        show_export_dialog(self.selected_video, self.choose_folder_and_export)
+    
+    def choose_folder_and_export(self):
+        """Choose folder and perform export"""
+        def on_folder_selected(result):
+            if result['success']:
+                folder_path = result['folder_path']
+                is_fallback = result.get('is_fallback', False)
+                
+                # Perform export
+                export_result = self.video_vault.export_video(self.selected_video, folder_path)
+                
+                if export_result['success']:
+                    # Success message with location
+                    success_text = f"✅ Video exported successfully!\n\n"
+                    success_text += f"🎬 File: {export_result['original_name']}\n"
+                    success_text += f"📁 Location: {export_result['export_path']}\n\n"
+                    
+                    if is_fallback:
+                        success_text += "⚠️ Used app storage as destination\n"
+                    
+                    success_text += "You can now play it in your video player."
+                    
+                    show_export_result_dialog(success_text, "Export Successful", True)
+                else:
+                    self.handle_export_error(export_result)
+            else:
+                # Folder selection failed
+                error_text = f"❌ Folder selection failed!\n\nError: {result['error']}\n\nPlease try again."
+                show_export_result_dialog(error_text, "Folder Selection Failed", False, self.choose_folder_and_export)
+        
+        # Start folder selection
+        self.video_vault.select_export_folder(on_folder_selected)
+
+    def handle_export_error(self, export_result):
+        """Handle export errors with retry option"""
+        if export_result.get('needs_folder_selection'):
+            error_text = f"❌ Export failed!\n\nError: {export_result['error']}\n\nWould you like to try with a different folder?"
+            show_export_result_dialog(error_text, "Export Failed", False, self.choose_folder_and_export)
+        else:
+            error_text = f"❌ Export failed!\n\nError: {export_result['error']}"
+            show_export_result_dialog(error_text, "Export Failed", False, None)
+    
+    def back_to_vault(self, instance):
+        """Go back to main vault screen"""
+        print("Going back to main vault screen...")
+        
+        # Clean up before leaving
+        self.video_vault.cleanup_video_players()
+        self.video_vault.cleanup_all_imageio_readers()
+        self.cleanup_video_widgets()
+        
+        # Navigate back
+        if hasattr(self.video_vault.app, 'show_vault_main'):
+            self.video_vault.app.show_vault_main()
+
+# Integration helper function
+def integrate_video_vault(vault_app):
+    """Helper function to integrate video vault into the main app"""
+    vault_app.video_vault = VideoVault(vault_app)
+    
+    def show_video_gallery():
+        """Show the video gallery"""
+        print("Showing video gallery...")
+        vault_app.main_layout.clear_widgets()
+        
+        # Create video gallery widget
+        video_gallery = vault_app.video_vault.create_video_gallery_widget()
+        vault_app.main_layout.add_widget(video_gallery)
+        
+        # Store reference for navigation
+        vault_app.current_screen = 'video_gallery'
+    
+    # Add method to vault app
+    vault_app.show_video_gallery = show_video_gallery
+    
+    return vault_app.video_vault
+
+# Additional helper functions for debugging
+def cleanup_temp_files():
+    """Clean up any temporary files marked for deletion"""
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    
+    try:
+        for filename in os.listdir(temp_dir):
+            if filename.startswith('delete_me_') or filename.endswith('.DELETE_ME'):
+                file_path = os.path.join(temp_dir, filename)
+                try:
+                    os.remove(file_path)
+                    print(f"Cleaned up temp file: {filename}")
+                except:
+                    pass
+    except Exception as e:
+        print(f"Error cleaning temp files: {e}")
+
+def get_vault_statistics(vault_instance):
+    """Get statistics about the video vault"""
+    try:
+        videos = vault_instance.get_vault_videos()
+        total_size = 0
+        
+        for video_path in videos:
+            try:
+                total_size += os.path.getsize(video_path)
+            except:
+                pass
+        
+        total_size_mb = round(total_size / (1024 * 1024), 1)
+        
+        return {
+            'video_count': len(videos),
+            'total_size_mb': total_size_mb,
+            'vault_directory': vault_instance.vault_dir
+        }
+    except Exception as e:
+        print(f"Error getting vault statistics: {e}")
+        return {'video_count': 0, 'total_size_mb': 0, 'vault_directory': 'Unknown'}
+
+print("✅ Video Vault UI module loaded successfully with BlueGray theme")
+print("🎬 Features: Modern card-based grid view, selection, export, recycle bin integration")
+print("💾 Memory-efficient batch loading for large video collections")
+print("📤 Complete export functionality with folder selection")
+print("♻️ Safe deletion with recycle bin integration")

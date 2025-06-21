@@ -1,0 +1,49 @@
+# Build directories
+build/
+dist/
+debug_build/
+main.dist/
+*.spec
+
+# Large files and executables
+*.exe
+*.bin
+*.app
+*.deb
+*.rpm
+*.msi
+*.dmg
+*.zip
+
+# Logs
+*.log
+buildozer_output.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Buildozer
+.buildozer/
+bin/
+
+# Java files
+*.jar
+
+# Temporary files
+*.tmp
+*.bak
+*~
+*.cache
+
+# Virtual environments
+venv/
+env/
+.venv/
