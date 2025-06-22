@@ -1,7 +1,35 @@
-"**/__pycache__/" 
-"*.pyc" 
-"websocket_*.py" 
-"**/__pycache__/" 
-"*.pyc" 
-"3cards.zip" 
-"test_*.py" 
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Compiled Python files
+*.py[cod]
+*$py.class
+
+# Project-specific files to ignore
+3cards.zip
+test_*.py
+buildozer.spec
+ace/buildozer.spec
+
+# Virtual environment directories
+venv/
+env/
+.venv/
+
+# IDE and editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Packaging and distribution
+*.egg-info/
+dist/
+build/
