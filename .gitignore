@@ -1,3 +1,7 @@
 "**/__pycache__/" 
 "*.pyc" 
 "websocket_*.py" 
+"**/__pycache__/" 
+"*.pyc" 
+"3cards.zip" 
+"test_*.py" 
