@@ -690,44 +690,14 @@ class ContactManager:
 def integrate_contact_management(vault_app):
     """
     Integrate contact management into the existing document vault
+    SIMPLIFIED VERSION - No more runtime patching of get_document_preview
     """
     # Create contact manager instance
     vault_app.contact_manager = ContactManager(vault_app)
     
-    # Override the document vault's view method for contact files
-    original_view_method = vault_app.document_vault.get_document_preview
-    
-    def enhanced_view_method(document_path, max_lines=20):
-        """Enhanced view method that handles contacts specially"""
-        file_ext = os.path.splitext(document_path.lower())[1]
-        
-        if file_ext in ['.vcf', '.contact']:
-            # Parse contact file
-            contact_data = vault_app.contact_manager.parse_vcf_contact(document_path)
-            
-            if 'error' in contact_data:
-                return {
-                    'success': False,
-                    'error': contact_data['error'],
-                    'preview_available': False
-                }
-            
-            return {
-                'success': True,
-                'contact_data': contact_data,
-                'preview_available': True,
-                'is_contact': True,
-                'file_path': document_path
-            }
-        else:
-            # Use original method for non-contact files
-            return original_view_method(document_path, max_lines)
-    
-    # Replace the method
-    vault_app.document_vault.get_document_preview = enhanced_view_method
-    
     print("✅ Contact management integrated successfully")
     print("📞 Android calling enabled" if ANDROID else "🖥️ Desktop mode - calling disabled")
+    print("🔧 SIMPLIFIED: No runtime patching - cleaner architecture")
     
     return vault_app.contact_manager
 
@@ -735,3 +705,4 @@ def integrate_contact_management(vault_app):
 print("✅ Contact Manager loaded successfully")
 print(f"📱 Platform: {'Android' if ANDROID else 'Desktop'}")
 print("📞 Features: Contact parsing, calling, email, maps integration")
+print("🧹 CLEANED: Removed unused get_document_preview override")

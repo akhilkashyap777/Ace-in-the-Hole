@@ -44,6 +44,61 @@ else:
 
 class VideoVault(VideoVaultCore):
     """Main Video Vault class that combines core functionality with UI methods"""
+
+    def cleanup_video_players(self):
+        """Clean up video players to prevent memory leaks"""
+        try:
+            cleaned = 0
+            # Clean up resource manager if available (optimized version)
+            if hasattr(self, 'resource_manager'):
+                cleaned = self.resource_manager.cleanup_video_players()
+            else:
+                # Fallback cleanup for basic version
+                if hasattr(self, 'active_video_players'):
+                    for player in self.active_video_players[:]:
+                        try:
+                            if player:
+                                if hasattr(player, 'state'):
+                                    player.state = 'stop'
+                                if hasattr(player, 'unload'):
+                                    player.unload()
+                                if hasattr(player, 'texture'):
+                                    player.texture = None
+                                cleaned += 1
+                        except Exception as e:
+                            print(f"Error cleaning video player: {e}")
+                    self.active_video_players.clear()
+            
+            print(f"✅ Cleaned up {cleaned} video players")
+            return cleaned
+        except Exception as e:
+            print(f"Error in cleanup_video_players: {e}")
+            return 0
+
+    def cleanup_all_imageio_readers(self):
+        """Clean up ImageIO readers to prevent memory leaks"""
+        try:
+            cleaned = 0
+            # Clean up resource manager if available (optimized version)
+            if hasattr(self, 'resource_manager'):
+                cleaned = self.resource_manager.cleanup_imageio_readers()
+            else:
+                # Fallback cleanup for basic version
+                if hasattr(self, 'imageio_readers'):
+                    for reader in self.imageio_readers[:]:
+                        try:
+                            if reader and hasattr(reader, 'close'):
+                                reader.close()
+                                cleaned += 1
+                        except Exception as e:
+                            print(f"Error closing ImageIO reader: {e}")
+                    self.imageio_readers.clear()
+            
+            print(f"✅ Cleaned up {cleaned} ImageIO readers")
+            return cleaned
+        except Exception as e:
+            print(f"Error in cleanup_all_imageio_readers: {e}")
+            return 0
     
     def select_videos_from_gallery(self, callback):
         """Open gallery/file picker to select videos"""

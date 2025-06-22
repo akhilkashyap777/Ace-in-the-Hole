@@ -1,4 +1,5 @@
 # password_ui.py - Game-themed password interface
+# ✅ FIXED VERSION - Proper widget lifecycle and memory management
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -18,14 +19,113 @@ class GamePasswordUI:
         self.security_answer = ""
         self.setup_step = 1  # 1: PIN, 2: Confirm PIN, 3: Security Q, 4: Security A
         
-    def show_first_setup(self):
-        """Show initial setup screen disguised as game setup"""
-        self.setup_mode = True
-        self.setup_step = 1
+        # ✅ PROPER FIX: Track scheduled events to prevent memory leaks
+        self._scheduled_events = []
+        self._countdown_event = None
         
+        # ✅ PROPER FIX: Widget factory pattern for safe reuse
+        self._widget_factories = {}
+        self._current_layout = None
+        
+        # ✅ OPTIMIZATION: Cache data, not widgets
+        self._ui_cache = {
+            'security_questions': [
+                "What city were you born in?",
+                "What is your favorite color?", 
+                "What is your pet's name?",
+                "What is your mother's maiden name?",
+                "Custom question..."
+            ]
+        }
+    
+    def _schedule_event(self, callback, delay):
+        """✅ SAFE: Schedule events with cleanup tracking"""
+        event = Clock.schedule_once(callback, delay)
+        self._scheduled_events.append(event)
+        return event
+    
+    def _cancel_all_events(self):
+        """✅ SAFE: Cancel all scheduled events to prevent memory leaks"""
+        for event in self._scheduled_events:
+            try:
+                event.cancel()
+            except:
+                pass
+        self._scheduled_events.clear()
+        
+        if self._countdown_event:
+            try:
+                self._countdown_event.cancel()
+                self._countdown_event = None
+            except:
+                pass
+    
+    def _clear_current_layout(self):
+        """✅ PROPER FIX: Safely clear current layout and its children"""
+        if self._current_layout:
+            try:
+                # Remove all children properly
+                for child in self._current_layout.children[:]:
+                    self._current_layout.remove_widget(child)
+                
+                # Clear from app's main layout
+                if self._current_layout.parent:
+                    self._current_layout.parent.remove_widget(self._current_layout)
+                    
+            except Exception as e:
+                print(f"Layout cleanup warning: {e}")
+            finally:
+                self._current_layout = None
+    
+    def _create_base_layout(self):
+        """✅ PROPER FIX: Create and track base layout"""
+        self._clear_current_layout()
         self.app.main_layout.clear_widgets()
         
         layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        self._current_layout = layout
+        return layout
+    
+    def _create_numpad(self):
+        """✅ PROPER FIX: Always create fresh numpad to avoid parent conflicts"""
+        numpad = GridLayout(cols=3, spacing=10, size_hint_y=None, height=300)
+        
+        # Number buttons 1-9
+        for i in range(1, 10):
+            btn = Button(text=str(i), font_size='24sp')
+            btn.bind(on_press=lambda x, num=i: self.add_digit(num))
+            numpad.add_widget(btn)
+        
+        # Clear button
+        clear_btn = Button(text='Clear', font_size='18sp', background_color=(0.8, 0.3, 0.3, 1))
+        clear_btn.bind(on_press=self.clear_pin)
+        numpad.add_widget(clear_btn)
+        
+        # Zero button
+        zero_btn = Button(text='0', font_size='24sp')
+        zero_btn.bind(on_press=lambda x: self.add_digit(0))
+        numpad.add_widget(zero_btn)
+        
+        # Delete button
+        del_btn = Button(text='Del', font_size='18sp', background_color=(0.6, 0.6, 0.3, 1))
+        del_btn.bind(on_press=self.delete_digit)
+        numpad.add_widget(del_btn)
+        
+        return numpad
+    
+    def cleanup(self):
+        """✅ PUBLIC: Complete cleanup method for proper resource management"""
+        self._cancel_all_events()
+        self._clear_current_layout()
+        self._widget_factories.clear()
+    
+    def show_first_setup(self):
+        """Show initial setup screen disguised as game setup"""
+        self._cancel_all_events()
+        self.setup_mode = True
+        self.setup_step = 1
+        
+        layout = self._create_base_layout()
         
         # Game-themed title
         title = Label(
@@ -57,19 +157,18 @@ class GamePasswordUI:
         layout.add_widget(self.pin_display)
         
         # Number pad
-        numpad = self.create_numpad()
+        numpad = self._create_numpad()
         layout.add_widget(numpad)
         
         self.app.main_layout.add_widget(layout)
     
     def show_password_prompt(self):
         """Show password entry screen disguised as game login"""
+        self._cancel_all_events()
         self.setup_mode = False
         self.current_pin = ""
         
-        self.app.main_layout.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = self._create_base_layout()
         
         # Check if locked out
         lockout_time = self.app.password_manager.get_lockout_time_remaining()
@@ -107,10 +206,10 @@ class GamePasswordUI:
         layout.add_widget(self.pin_display)
         
         # Number pad
-        numpad = self.create_numpad()
+        numpad = self._create_numpad()
         layout.add_widget(numpad)
         
-        # Forgot PIN button (added here for easier access)
+        # Forgot PIN button
         forgot_btn = Button(
             text='Forgot PIN?',
             size_hint_y=None,
@@ -132,33 +231,6 @@ class GamePasswordUI:
         
         self.app.main_layout.add_widget(layout)
     
-    def create_numpad(self):
-        """Create number pad for PIN entry"""
-        numpad = GridLayout(cols=3, spacing=10, size_hint_y=None, height=300)
-        
-        # Number buttons 1-9
-        for i in range(1, 10):
-            btn = Button(text=str(i), font_size='24sp')
-            btn.bind(on_press=lambda x, num=i: self.add_digit(num))
-            numpad.add_widget(btn)
-        
-        # Clear button
-        clear_btn = Button(text='Clear', font_size='18sp', background_color=(0.8, 0.3, 0.3, 1))
-        clear_btn.bind(on_press=self.clear_pin)
-        numpad.add_widget(clear_btn)
-        
-        # Zero button
-        zero_btn = Button(text='0', font_size='24sp')
-        zero_btn.bind(on_press=lambda x: self.add_digit(0))
-        numpad.add_widget(zero_btn)
-        
-        # Delete button
-        del_btn = Button(text='Del', font_size='18sp', background_color=(0.6, 0.6, 0.3, 1))
-        del_btn.bind(on_press=self.delete_digit)
-        numpad.add_widget(del_btn)
-        
-        return numpad
-    
     def add_digit(self, digit):
         """Add digit to PIN"""
         if len(self.current_pin) < 4:
@@ -166,7 +238,7 @@ class GamePasswordUI:
             self.update_pin_display()
             
             if len(self.current_pin) == 4:
-                Clock.schedule_once(self.process_pin, 0.5)
+                self._schedule_event(self.process_pin, 0.5)
     
     def delete_digit(self, instance):
         """Delete last digit"""
@@ -187,7 +259,8 @@ class GamePasswordUI:
                 display += "● "
             else:
                 display += "_ "
-        self.pin_display.text = display.strip()
+        if hasattr(self, 'pin_display') and self.pin_display:
+            self.pin_display.text = display.strip()
     
     def process_pin(self, dt):
         """Process entered PIN"""
@@ -215,13 +288,11 @@ class GamePasswordUI:
                 self.setup_step = 1
                 self.current_pin = ""
                 self.confirm_pin = ""
-                Clock.schedule_once(lambda dt: self.show_first_setup(), 2)
+                self._schedule_event(lambda dt: self.show_first_setup(), 2)
     
     def show_pin_confirm(self):
         """Show PIN confirmation screen"""
-        self.app.main_layout.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = self._create_base_layout()
         
         title = Label(
             text='Confirm Player PIN',
@@ -249,16 +320,14 @@ class GamePasswordUI:
         )
         layout.add_widget(self.pin_display)
         
-        numpad = self.create_numpad()
+        numpad = self._create_numpad()
         layout.add_widget(numpad)
         
         self.app.main_layout.add_widget(layout)
     
     def show_security_question_setup(self):
         """Show security question setup"""
-        self.app.main_layout.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = self._create_base_layout()
         
         title = Label(
             text='Security Setup',
@@ -269,14 +338,7 @@ class GamePasswordUI:
         )
         layout.add_widget(title)
         
-        # Predefined questions
-        questions = [
-            "What city were you born in?",
-            "What is your favorite color?", 
-            "What is your pet's name?",
-            "What is your mother's maiden name?",
-            "Custom question..."
-        ]
+        questions = self._ui_cache['security_questions']
         
         instruction = Label(
             text='Choose a security question:',
@@ -344,9 +406,7 @@ class GamePasswordUI:
     
     def show_security_answer_setup(self):
         """Show security answer setup"""
-        self.app.main_layout.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = self._create_base_layout()
         
         title = Label(
             text='Security Answer',
@@ -410,7 +470,7 @@ class GamePasswordUI:
         
         if success:
             self.show_success("Setup complete! Welcome to the game.")
-            Clock.schedule_once(lambda dt: self.app.back_to_game(None), 3)
+            self._schedule_event(lambda dt: self.app.back_to_game(None), 3)
         else:
             self.show_error("Setup failed! Please try again.")
     
@@ -420,7 +480,7 @@ class GamePasswordUI:
         
         if result:
             self.show_success("Access granted!")
-            Clock.schedule_once(lambda dt: self.app.open_vault(), 2)
+            self._schedule_event(lambda dt: self.app.open_vault(), 2)
         else:
             if status == "locked":
                 lockout_time = self.app.password_manager.get_lockout_time_remaining()
@@ -431,20 +491,20 @@ class GamePasswordUI:
                 if remaining > 0:
                     self.show_error(f"Wrong PIN! {remaining} attempts remaining.")
                     self.current_pin = ""
-                    Clock.schedule_once(lambda dt: self.update_pin_display(), 0.5)
+                    self._schedule_event(lambda dt: self.update_pin_display(), 0.5)
                 else:
                     lockout_time = self.app.password_manager.get_lockout_time_remaining()
                     self.show_lockout_screen(lockout_time)
             else:
                 self.show_error("Access denied!")
                 self.current_pin = ""
-                Clock.schedule_once(lambda dt: self.update_pin_display(), 0.5)
+                self._schedule_event(lambda dt: self.update_pin_display(), 0.5)
     
     def show_lockout_screen(self, lockout_time):
-        """Show lockout screen"""
-        self.app.main_layout.clear_widgets()
+        """✅ FIXED: Show lockout screen with proper timer management"""
+        self._cancel_all_events()
         
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = self._create_base_layout()
         
         title = Label(
             text='Game Temporarily Locked',
@@ -488,18 +548,31 @@ class GamePasswordUI:
         
         self.app.main_layout.add_widget(layout)
         
-        # Update countdown
-        self.update_lockout_countdown()
+        # Start countdown
+        self.start_lockout_countdown()
     
-    def update_lockout_countdown(self):
-        """Update lockout countdown timer"""
+    def start_lockout_countdown(self):
+        """✅ FIXED: Start countdown timer with proper tracking"""
+        if self._countdown_event:
+            self._countdown_event.cancel()
+        
+        self._countdown_event = Clock.schedule_interval(self.update_lockout_countdown, 1.0)
+    
+    def update_lockout_countdown(self, dt):
+        """✅ FIXED: Update lockout countdown without infinite recursion"""
         lockout_time = self.app.password_manager.get_lockout_time_remaining()
+        
         if lockout_time > 0:
             minutes = lockout_time // 60
             seconds = lockout_time % 60
-            self.lockout_label.text = f'Try again in: {minutes:02d}:{seconds:02d}'
-            Clock.schedule_once(lambda dt: self.update_lockout_countdown(), 1)
+            if hasattr(self, 'lockout_label') and self.lockout_label:
+                self.lockout_label.text = f'Try again in: {minutes:02d}:{seconds:02d}'
         else:
+            # Stop the countdown and clean up
+            if self._countdown_event:
+                self._countdown_event.cancel()
+                self._countdown_event = None
+            
             # Lockout expired, show password prompt
             self.show_password_prompt()
     
@@ -558,14 +631,13 @@ class GamePasswordUI:
     
     def show_pin_reset(self):
         """Show PIN reset screen"""
+        self._cancel_all_events()
         self.setup_mode = True
         self.setup_step = 1
         self.current_pin = ""
         self.confirm_pin = ""
         
-        self.app.main_layout.clear_widgets()
-        
-        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+        layout = self._create_base_layout()
         
         title = Label(
             text='Reset Your PIN',
@@ -593,13 +665,13 @@ class GamePasswordUI:
         )
         layout.add_widget(self.pin_display)
         
-        numpad = self.create_numpad()
+        numpad = self._create_numpad()
         layout.add_widget(numpad)
         
         self.app.main_layout.add_widget(layout)
     
     def show_error(self, message):
-        """Show error message"""
+        """Show error message with auto-dismiss"""
         content = Label(text=message, text_size=(250, None), halign='center')
         popup = Popup(
             title='Error',
@@ -608,10 +680,10 @@ class GamePasswordUI:
             auto_dismiss=True
         )
         popup.open()
-        Clock.schedule_once(lambda dt: popup.dismiss(), 2)
+        self._schedule_event(lambda dt: popup.dismiss(), 2)
     
     def show_success(self, message):
-        """Show success message"""
+        """Show success message with auto-dismiss"""
         content = Label(text=message, text_size=(250, None), halign='center')
         popup = Popup(
             title='Success',
@@ -620,9 +692,11 @@ class GamePasswordUI:
             auto_dismiss=True
         )
         popup.open()
-        Clock.schedule_once(lambda dt: popup.dismiss(), 2)
+        self._schedule_event(lambda dt: popup.dismiss(), 2)
     
     def back_to_game(self, instance):
-        """Return to game interface"""
+        """Return to game interface with proper cleanup"""
+        self._cancel_all_events()
+        self._clear_current_layout()
         self.app.volume_pattern = []  # Reset pattern
         self.app.back_to_game(None)

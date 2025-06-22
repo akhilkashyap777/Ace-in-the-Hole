@@ -1,4 +1,4 @@
-# monte_game.py - Pure game logic separated from UI
+# monte_game.py - Optimized version with performance improvements
 import pygame
 import random
 import time
@@ -25,8 +25,26 @@ class MonteGame:
         
         self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 36)
-        self.big_font = pygame.font.Font(None, 72)
+        
+        # ✅ OPTIMIZATION: Pre-create and cache all fonts
+        self._font_cache = {
+            'small': pygame.font.Font(None, 36),
+            'large': pygame.font.Font(None, 72),
+            'card_ace': pygame.font.Font(None, 72),
+            'card_number': pygame.font.Font(None, 48)
+        }
+        
+        # ✅ OPTIMIZATION: Cache static background
+        self._background_cache = None
+        self._background_dirty = True
+        
+        # ✅ OPTIMIZATION: Frame skipping for performance
+        self._last_draw_state = None
+        self._draw_dirty = True
+        
+        # ✅ OPTIMIZATION: Text rendering cache
+        self._text_cache = {}
+        self._text_cache_max_size = 50
         
         self.reset_game()
         self.running = True
@@ -44,6 +62,10 @@ class MonteGame:
         self.result_timer = 0
         self.last_guess_correct = True
         
+        # ✅ OPTIMIZATION: Mark as dirty for redraw
+        self._draw_dirty = True
+        self._background_dirty = True
+        
         # Create cards
         card_y = self.SCREEN_HEIGHT // 2 - self.CARD_HEIGHT // 2
         start_x = self.SCREEN_WIDTH // 2 - (3 * self.CARD_WIDTH + 2 * self.CARD_SPACING) // 2
@@ -57,14 +79,50 @@ class MonteGame:
             card = Card(card_x, card_y, is_winner, self)
             self.cards.append(card)
     
+    def _get_cached_text(self, text, font_name, color):
+        """✅ OPTIMIZATION: Cache rendered text to avoid recreation"""
+        cache_key = (text, font_name, color)
+        
+        if cache_key in self._text_cache:
+            return self._text_cache[cache_key]
+        
+        # Clean cache if too large
+        if len(self._text_cache) >= self._text_cache_max_size:
+            # Remove oldest entries (simple FIFO)
+            old_keys = list(self._text_cache.keys())[:10]
+            for key in old_keys:
+                del self._text_cache[key]
+        
+        # Render and cache
+        font = self._font_cache.get(font_name, self._font_cache['small'])
+        rendered_text = font.render(text, True, color)
+        self._text_cache[cache_key] = rendered_text
+        
+        return rendered_text
+    
+    def _get_current_state_hash(self):
+        """✅ OPTIMIZATION: Generate hash of current visual state for dirty checking"""
+        state_data = (
+            self.game_state,
+            self.score,
+            self.streak,
+            self.best_streak,
+            self.round_num,
+            self.shuffle_speed,
+            tuple((card.x, card.y, card.is_face_up, card.moving) for card in self.cards)
+        )
+        return hash(state_data)
+    
     def show_cards(self):
         for card in self.cards:
             card.is_face_up = True
         self.show_timer = pygame.time.get_ticks()
+        self._draw_dirty = True  # ✅ Mark for redraw
     
     def hide_cards(self):
         for card in self.cards:
             card.is_face_up = False
+        self._draw_dirty = True  # ✅ Mark for redraw
     
     def shuffle_cards(self):
         if self.shuffle_count < self.max_shuffles:
@@ -73,10 +131,12 @@ class MonteGame:
             card1.move_to(card2.target_x, card2.target_y)
             card2.move_to(temp_x, temp_y)
             self.shuffle_count += 1
+            self._draw_dirty = True  # ✅ Mark for redraw
         else:
             all_still = all(not card.moving for card in self.cards)
             if all_still:
                 self.game_state = "guessing"
+                self._draw_dirty = True
     
     def handle_click(self, pos):
         if self.game_state == "guessing":
@@ -96,6 +156,8 @@ class MonteGame:
                         self.shuffle_speed = 0.3
                         self.max_shuffles = 6
                         self.last_guess_correct = False
+                    
+                    self._draw_dirty = True  # ✅ Mark for redraw
                     return
         elif self.game_state == "result":
             self.next_round()
@@ -123,15 +185,20 @@ class MonteGame:
             self.cards.append(card)
         
         self.show_cards()
+        self._draw_dirty = True  # ✅ Mark for redraw
     
     def update(self):
         if not self.running:
             return
-            
+        
+        # ✅ OPTIMIZATION: Track if any visual changes occurred
+        cards_changed = False
+        
         if self.game_state == "showing":
             if pygame.time.get_ticks() - self.show_timer > 2000:
                 self.hide_cards()
                 self.game_state = "shuffling"
+                self._draw_dirty = True
         
         elif self.game_state == "shuffling":
             current_time = pygame.time.get_ticks()
@@ -143,44 +210,71 @@ class MonteGame:
             if current_time - self.last_shuffle_time > shuffle_interval:
                 self.shuffle_cards()
                 self.last_shuffle_time = current_time
+                cards_changed = True
         
         elif self.game_state == "result":
             if pygame.time.get_ticks() - self.result_timer > 2000:
                 self.next_round()
+        
+        # ✅ OPTIMIZATION: Check if cards moved (for animation)
+        for card in self.cards:
+            if card.update_position():
+                cards_changed = True
+        
+        if cards_changed:
+            self._draw_dirty = True
     
-    def draw_background(self):
-        self.screen.fill(self.FELT_GREEN)
+    def _draw_background_cached(self):
+        """✅ OPTIMIZATION: Draw and cache static background"""
+        if self._background_cache is None or self._background_dirty:
+            # Create background surface
+            self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+            surface = self._background_cache
+            
+            surface.fill(self.FELT_GREEN)
+            
+            border_width = 30
+            pygame.draw.rect(surface, self.WOOD_BROWN, (0, 0, self.SCREEN_WIDTH, border_width))
+            pygame.draw.rect(surface, self.WOOD_BROWN, (0, self.SCREEN_HEIGHT - border_width, self.SCREEN_WIDTH, border_width))
+            pygame.draw.rect(surface, self.WOOD_BROWN, (0, 0, border_width, self.SCREEN_HEIGHT))
+            pygame.draw.rect(surface, self.WOOD_BROWN, (self.SCREEN_WIDTH - border_width, 0, border_width, self.SCREEN_HEIGHT))
+            
+            trim_width = 5
+            pygame.draw.rect(surface, self.LIGHT_BROWN, (trim_width, trim_width, self.SCREEN_WIDTH - 2*trim_width, border_width - trim_width))
+            pygame.draw.rect(surface, self.LIGHT_BROWN, (trim_width, self.SCREEN_HEIGHT - border_width, self.SCREEN_WIDTH - 2*trim_width, border_width - trim_width))
+            pygame.draw.rect(surface, self.LIGHT_BROWN, (trim_width, trim_width, border_width - trim_width, self.SCREEN_HEIGHT - 2*trim_width))
+            pygame.draw.rect(surface, self.LIGHT_BROWN, (self.SCREEN_WIDTH - border_width, trim_width, border_width - trim_width, self.SCREEN_HEIGHT - 2*trim_width))
+            
+            # ✅ OPTIMIZATION: Simplified pattern (fewer draw calls)
+            for y in range(50, self.SCREEN_HEIGHT - 50, 40):
+                for x in range(50, self.SCREEN_WIDTH - 50, 80):
+                    pygame.draw.circle(surface, self.DARK_GREEN, (x, y), 1)
+            
+            self._background_dirty = False
         
-        border_width = 30
-        pygame.draw.rect(self.screen, self.WOOD_BROWN, (0, 0, self.SCREEN_WIDTH, border_width))
-        pygame.draw.rect(self.screen, self.WOOD_BROWN, (0, self.SCREEN_HEIGHT - border_width, self.SCREEN_WIDTH, border_width))
-        pygame.draw.rect(self.screen, self.WOOD_BROWN, (0, 0, border_width, self.SCREEN_HEIGHT))
-        pygame.draw.rect(self.screen, self.WOOD_BROWN, (self.SCREEN_WIDTH - border_width, 0, border_width, self.SCREEN_HEIGHT))
-        
-        trim_width = 5
-        pygame.draw.rect(self.screen, self.LIGHT_BROWN, (trim_width, trim_width, self.SCREEN_WIDTH - 2*trim_width, border_width - trim_width))
-        pygame.draw.rect(self.screen, self.LIGHT_BROWN, (trim_width, self.SCREEN_HEIGHT - border_width, self.SCREEN_WIDTH - 2*trim_width, border_width - trim_width))
-        pygame.draw.rect(self.screen, self.LIGHT_BROWN, (trim_width, trim_width, border_width - trim_width, self.SCREEN_HEIGHT - 2*trim_width))
-        pygame.draw.rect(self.screen, self.LIGHT_BROWN, (self.SCREEN_WIDTH - border_width, trim_width, border_width - trim_width, self.SCREEN_HEIGHT - 2*trim_width))
-        
-        for y in range(50, self.SCREEN_HEIGHT - 50, 20):
-            for x in range(50, self.SCREEN_WIDTH - 50, 40):
-                if (x + y) % 80 == 0:
-                    pygame.draw.circle(self.screen, self.DARK_GREEN, (x, y), 1)
+        # Blit cached background
+        self.screen.blit(self._background_cache, (0, 0))
     
     def draw(self):
-        self.draw_background()
+        # ✅ OPTIMIZATION: Skip drawing if nothing changed
+        current_state = self._get_current_state_hash()
+        if current_state == self._last_draw_state and not self._draw_dirty:
+            return  # Skip redraw
         
+        self._draw_background_cached()
+        
+        # Draw cards
         for card in self.cards:
             card.draw(self.screen)
         
-        # Draw UI
-        score_text = self.font.render(f"Score: {self.score}", True, self.WHITE)
-        streak_text = self.font.render(f"Streak: {self.streak}", True, self.GOLD if self.streak > 0 else self.WHITE)
-        best_streak_text = self.font.render(f"Best: {self.best_streak}", True, self.GOLD)
-        round_text = self.font.render(f"Round: {self.round_num}", True, self.WHITE)
-        speed_text = self.font.render(f"Speed: {self.shuffle_speed:.2f}x", True, self.WHITE)
+        # ✅ OPTIMIZATION: Use cached text rendering
+        score_text = self._get_cached_text(f"Score: {self.score}", 'small', self.WHITE)
+        streak_text = self._get_cached_text(f"Streak: {self.streak}", 'small', self.GOLD if self.streak > 0 else self.WHITE)
+        best_streak_text = self._get_cached_text(f"Best: {self.best_streak}", 'small', self.GOLD)
+        round_text = self._get_cached_text(f"Round: {self.round_num}", 'small', self.WHITE)
+        speed_text = self._get_cached_text(f"Speed: {self.shuffle_speed:.2f}x", 'small', self.WHITE)
         
+        # ✅ OPTIMIZATION: Single background rectangle for UI
         pygame.draw.rect(self.screen, self.BLACK, (5, 5, 200, 140))
         
         self.screen.blit(score_text, (15, 15))
@@ -202,20 +296,31 @@ class MonteGame:
             else:
                 instruction = f"WRONG! Streak broken! Speed reset (Click to continue)"
         
-        instruction_text = self.font.render(instruction, True, self.WHITE)
+        instruction_text = self._get_cached_text(instruction, 'small', self.WHITE)
         instruction_rect = instruction_text.get_rect(center=(self.SCREEN_WIDTH//2, self.SCREEN_HEIGHT - 50))
         
         pygame.draw.rect(self.screen, self.BLACK, instruction_rect.inflate(30, 15))
         self.screen.blit(instruction_text, instruction_rect)
         
         # Draw title
-        title_text = self.big_font.render("3 CARD MONTE", True, self.GOLD)
+        title_text = self._get_cached_text("3 CARD MONTE", 'large', self.GOLD)
         title_rect = title_text.get_rect(center=(self.SCREEN_WIDTH//2, 50))
         pygame.draw.rect(self.screen, self.BLACK, title_rect.inflate(30, 15))
         self.screen.blit(title_text, title_rect)
+        
+        # ✅ OPTIMIZATION: Update state tracking
+        self._last_draw_state = current_state
+        self._draw_dirty = False
     
     def get_surface(self):
         return self.screen
+    
+    def cleanup(self):
+        """✅ OPTIMIZATION: Proper cleanup method"""
+        self._text_cache.clear()
+        self._background_cache = None
+        if hasattr(self, 'cards'):
+            self.cards.clear()
 
 class Card:
     def __init__(self, x, y, is_winner, game):
@@ -229,44 +334,74 @@ class Card:
         self.moving = False
         self.game = game
         
-    def draw(self, screen):
+        # ✅ OPTIMIZATION: Pre-render card faces to avoid recreation
+        self._face_cache = {}
+        self._render_faces()
+        
+    def _render_faces(self):
+        """✅ OPTIMIZATION: Pre-render all card faces"""
+        # Winner face (Red Ace)
+        winner_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT))
+        winner_surface.fill(self.game.RED)
+        pygame.draw.rect(winner_surface, self.game.BLACK, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
+        
+        ace_text = self.game._font_cache['card_ace'].render("A", True, self.game.WHITE)
+        ace_rect = ace_text.get_rect(center=(self.game.CARD_WIDTH//2, self.game.CARD_HEIGHT//2))
+        winner_surface.blit(ace_text, ace_rect)
+        self._face_cache['winner'] = winner_surface
+        
+        # Loser face (Black 2)
+        loser_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT))
+        loser_surface.fill(self.game.BLACK)
+        pygame.draw.rect(loser_surface, self.game.WHITE, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
+        
+        two_text = self.game._font_cache['card_number'].render("2", True, self.game.WHITE)
+        two_rect = two_text.get_rect(center=(self.game.CARD_WIDTH//2, self.game.CARD_HEIGHT//2))
+        loser_surface.blit(two_text, two_rect)
+        self._face_cache['loser'] = loser_surface
+        
+        # Back face
+        back_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT))
+        back_surface.fill(self.game.BLUE)
+        pygame.draw.rect(back_surface, self.game.BLACK, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
+        
+        # ✅ OPTIMIZATION: Simplified back pattern
+        for i in range(0, 3):
+            for j in range(0, 4):
+                pygame.draw.circle(back_surface, self.game.WHITE, 
+                                 (30 + i * 30, 30 + j * 25), 8)
+        self._face_cache['back'] = back_surface
+    
+    def update_position(self):
+        """✅ OPTIMIZATION: Return True if position changed"""
         if self.moving:
             dx = self.target_x - self.x
             dy = self.target_y - self.y
             if abs(dx) > 1 or abs(dy) > 1:
                 self.x += dx * 0.15
                 self.y += dy * 0.15
+                self.rect.x = int(self.x)
+                self.rect.y = int(self.y)
+                return True
             else:
                 self.x = self.target_x
                 self.y = self.target_y
                 self.moving = False
+                self.rect.x = int(self.x)
+                self.rect.y = int(self.y)
+                return True
+        return False
         
-        self.rect.x = int(self.x)
-        self.rect.y = int(self.y)
-        
+    def draw(self, screen):
+        """✅ OPTIMIZATION: Use pre-rendered surfaces"""
+        # Select appropriate face
         if self.is_face_up:
-            if self.is_winner:
-                pygame.draw.rect(screen, self.game.RED, self.rect)
-                pygame.draw.rect(screen, self.game.BLACK, self.rect, 3)
-                font = pygame.font.Font(None, 72)
-                text = font.render("A", True, self.game.WHITE)
-                text_rect = text.get_rect(center=self.rect.center)
-                screen.blit(text, text_rect)
-            else:
-                pygame.draw.rect(screen, self.game.BLACK, self.rect)
-                pygame.draw.rect(screen, self.game.WHITE, self.rect, 3)
-                font = pygame.font.Font(None, 48)
-                text = font.render("2", True, self.game.WHITE)
-                text_rect = text.get_rect(center=self.rect.center)
-                screen.blit(text, text_rect)
+            face_key = 'winner' if self.is_winner else 'loser'
         else:
-            pygame.draw.rect(screen, self.game.BLUE, self.rect)
-            pygame.draw.rect(screen, self.game.BLACK, self.rect, 3)
-            for i in range(3):
-                for j in range(4):
-                    pygame.draw.circle(screen, self.game.WHITE, 
-                                     (self.rect.x + 30 + i * 30, 
-                                      self.rect.y + 30 + j * 25), 8)
+            face_key = 'back'
+        
+        # Blit pre-rendered surface
+        screen.blit(self._face_cache[face_key], (int(self.x), int(self.y)))
     
     def move_to(self, target_x, target_y):
         self.target_x = target_x
