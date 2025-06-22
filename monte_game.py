@@ -1,4 +1,4 @@
-# monte_game.py - Pure game logic separated from UI
+# monte_game.py - Fixed version with separated movement logic
 import pygame
 import random
 import time
@@ -74,6 +74,7 @@ class MonteGame:
             card2.move_to(temp_x, temp_y)
             self.shuffle_count += 1
         else:
+            # Check if all cards have finished moving
             all_still = all(not card.moving for card in self.cards)
             if all_still:
                 self.game_state = "guessing"
@@ -127,6 +128,10 @@ class MonteGame:
     def update(self):
         if not self.running:
             return
+        
+        # Update card movements FIRST - this is crucial!
+        for card in self.cards:
+            card.update_movement()
             
         if self.game_state == "showing":
             if pygame.time.get_ticks() - self.show_timer > 2000:
@@ -219,31 +224,40 @@ class MonteGame:
 
 class Card:
     def __init__(self, x, y, is_winner, game):
-        self.x = x
-        self.y = y
-        self.target_x = x
-        self.target_y = y
+        self.x = float(x)  # Use float for smoother movement
+        self.y = float(y)
+        self.target_x = float(x)
+        self.target_y = float(y)
         self.is_winner = is_winner
         self.is_face_up = False
-        self.rect = pygame.Rect(x, y, game.CARD_WIDTH, game.CARD_HEIGHT)
+        self.rect = pygame.Rect(int(x), int(y), game.CARD_WIDTH, game.CARD_HEIGHT)
         self.moving = False
         self.game = game
+        self.movement_speed = 0.15  # Movement interpolation speed
         
-    def draw(self, screen):
+    def update_movement(self):
+        """Update card movement - separated from drawing logic"""
         if self.moving:
             dx = self.target_x - self.x
             dy = self.target_y - self.y
-            if abs(dx) > 1 or abs(dy) > 1:
-                self.x += dx * 0.15
-                self.y += dy * 0.15
+            distance = (dx*dx + dy*dy)**0.5  # Calculate distance
+            
+            if distance > 2.0:  # Use distance threshold instead of separate dx/dy
+                self.x += dx * self.movement_speed
+                self.y += dy * self.movement_speed
             else:
+                # Snap to target and stop moving
                 self.x = self.target_x
                 self.y = self.target_y
                 self.moving = False
         
+        # Update rect position for collision detection
         self.rect.x = int(self.x)
         self.rect.y = int(self.y)
         
+    def draw(self, screen):
+        """Draw the card - movement logic is now separate"""
+        # Drawing logic only - movement is handled by update_movement()
         if self.is_face_up:
             if self.is_winner:
                 pygame.draw.rect(screen, self.game.RED, self.rect)
@@ -269,6 +283,7 @@ class Card:
                                       self.rect.y + 30 + j * 25), 8)
     
     def move_to(self, target_x, target_y):
-        self.target_x = target_x
-        self.target_y = target_y
+        """Start moving to target position"""
+        self.target_x = float(target_x)
+        self.target_y = float(target_y)
         self.moving = True
