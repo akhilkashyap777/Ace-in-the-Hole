@@ -414,7 +414,3 @@ class PhotoVaultCore:
             
         except Exception as e:
             callback({'success': False, 'error': f'Fallback folder creation failed: {e}'})
-
-print("✅ Photo Vault Core loaded successfully")
-print("🖼️ Universal image format detection with MIME + PIL verification")
-print("🌐 Cross-platform: Android, Windows, macOS, Linux")

@@ -542,11 +542,4 @@ def add_new_file_type(file_type_name, extensions, retention_days, icon, display_
         'display_name': display_name
     }
 
-# Example: Adding new file types for future features
-# add_new_file_type('contacts', ['.vcf', '.contact'], 90, '👥', 'Contacts')
-# add_new_file_type('passwords', ['.kdbx', '.pwd'], 180, '🔐', 'Passwords')
-# add_new_file_type('bookmarks', ['.html', '.bookmark'], 120, '🔖', 'Bookmarks')
-
-print("✅ Flexible Recycle Bin Core loaded successfully")
 print(f"📁 Supports {len(RecycleBinCore.FILE_TYPE_CONFIG)} file types out of the box")
-print("🔧 Easily extensible for new file types")

@@ -31,7 +31,10 @@ class AudioVaultWidget(MDBoxLayout):
         self.selected_audio = None
         self.current_sort = 'added_date'
         
-        # Set dark gradient background
+        self.sort_menu = None
+        self._search_timer = None
+        self._is_destroyed = False
+        
         self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
         self.create_header()
@@ -42,8 +45,24 @@ class AudioVaultWidget(MDBoxLayout):
         
         Clock.schedule_once(lambda dt: self.refresh_audio_vault(), 0.1)
     
+    def cleanup(self):
+        self._is_destroyed = True
+        
+        if self._search_timer:
+            self._search_timer.cancel()
+            self._search_timer = None
+        
+        if self.sort_menu:
+            self.sort_menu.dismiss()
+            self.sort_menu = None
+        
+        if hasattr(self, 'search_input') and self.search_input:
+            self.search_input.unbind(text=self.on_search_text_change)
+        
+        if hasattr(self, 'audio_grid'):
+            self.audio_grid.clear_widgets()
+    
     def create_header(self):
-        """Create large title header"""
         header = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
@@ -52,7 +71,6 @@ class AudioVaultWidget(MDBoxLayout):
             spacing=10
         )
         
-        # Large title
         title = MDLabel(
             text='AUDIO FILES',
             font_style="H3",
@@ -62,7 +80,6 @@ class AudioVaultWidget(MDBoxLayout):
         )
         header.add_widget(title)
         
-        # Action buttons row
         actions_row = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
@@ -94,7 +111,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.add_widget(header)
     
     def create_search_section(self):
-        """Create search bar and sort controls"""
         search_container = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
@@ -103,7 +119,6 @@ class AudioVaultWidget(MDBoxLayout):
             spacing=15
         )
         
-        # Search bar
         search_row = MDBoxLayout(
             orientation='horizontal',
             size_hint_y=None,
@@ -111,7 +126,6 @@ class AudioVaultWidget(MDBoxLayout):
             spacing=15
         )
         
-        # Search input with rounded style
         self.search_input = MDTextField(
             hint_text='Search audio files...',
             size_hint_x=0.75,
@@ -125,7 +139,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.search_input.bind(text=self.on_search_text_change)
         search_row.add_widget(self.search_input)
         
-        # Sort button
         self.sort_btn = MDRaisedButton(
             text='Sort',
             size_hint_x=0.25,
@@ -136,46 +149,51 @@ class AudioVaultWidget(MDBoxLayout):
         self.sort_btn.bind(on_press=self.show_sort_menu)
         search_row.add_widget(self.sort_btn)
         
-        # Create sort menu
-        if not hasattr(self, 'sort_menu'):
-            sort_menu_items = [
-                {
-                    "text": "Recent First",
-                    "viewclass": "OneLineListItem",
-                    "on_release": lambda x="Recent First": self.set_sort_option(x),
-                },
-                {
-                    "text": "Name A-Z", 
-                    "viewclass": "OneLineListItem",
-                    "on_release": lambda x="Name A-Z": self.set_sort_option(x),
-                },
-                {
-                    "text": "Largest First",
-                    "viewclass": "OneLineListItem",
-                    "on_release": lambda x="Largest First": self.set_sort_option(x),
-                },
-                {
-                    "text": "Longest First",
-                    "viewclass": "OneLineListItem", 
-                    "on_release": lambda x="Longest First": self.set_sort_option(x),
-                },
-            ]
-            
-            self.sort_menu = MDDropdownMenu(
-                caller=self.sort_btn,
-                items=sort_menu_items,
-                width_mult=3,
-            )
-        
         search_container.add_widget(search_row)
         self.add_widget(search_container)
     
     def show_sort_menu(self, instance):
+        if self.sort_menu:
+            self.sort_menu.dismiss()
+            self.sort_menu = None
+        
+        sort_menu_items = [
+            {
+                "text": "Recent First",
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x="Recent First": self.set_sort_option(x),
+            },
+            {
+                "text": "Name A-Z", 
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x="Name A-Z": self.set_sort_option(x),
+            },
+            {
+                "text": "Largest First",
+                "viewclass": "OneLineListItem",
+                "on_release": lambda x="Largest First": self.set_sort_option(x),
+            },
+            {
+                "text": "Longest First",
+                "viewclass": "OneLineListItem", 
+                "on_release": lambda x="Longest First": self.set_sort_option(x),
+            },
+        ]
+        
+        self.sort_menu = MDDropdownMenu(
+            caller=self.sort_btn,
+            items=sort_menu_items,
+            width_mult=3,
+        )
+        
         self.sort_menu.open()
     
     def set_sort_option(self, sort_text):
         self.sort_btn.text = sort_text
-        self.sort_menu.dismiss()
+        
+        if self.sort_menu:
+            self.sort_menu.dismiss()
+            self.sort_menu = None
         
         sort_mapping = {
             'Recent First': 'added_date',
@@ -188,7 +206,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.refresh_audio_grid()
     
     def create_stats_section(self):
-        """Create stats display"""
         self.stats_label = MDLabel(
             text='Loading audio vault statistics...',
             font_style="Body2",
@@ -200,7 +217,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.add_widget(self.stats_label)
     
     def create_audio_grid(self):
-        """Create scrollable audio files grid"""
         scroll = MDScrollView(
             bar_width=dp(4),
             bar_color=[0.4, 0.6, 0.8, 0.7],
@@ -220,7 +236,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.add_widget(scroll)
     
     def create_bottom_bar(self):
-        """Create bottom action bar"""
         bottom_bar = MDCard(
             orientation='horizontal',
             size_hint_y=None,
@@ -231,7 +246,6 @@ class AudioVaultWidget(MDBoxLayout):
             md_bg_color=[0.26, 0.32, 0.36, 1]
         )
         
-        # Refresh
         refresh_btn = MDFlatButton(
             text='🔄 Refresh',
             text_color="white",
@@ -240,7 +254,6 @@ class AudioVaultWidget(MDBoxLayout):
         refresh_btn.bind(on_press=self.refresh_audio_vault)
         bottom_bar.add_widget(refresh_btn)
         
-        # Play
         self.play_btn = MDFlatButton(
             text='▶️ Play',
             text_color=[0.4, 0.8, 0.4, 1],
@@ -249,7 +262,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.play_btn.bind(on_press=self.play_selected_audio)
         bottom_bar.add_widget(self.play_btn)
         
-        # Export
         self.export_btn = MDFlatButton(
             text='⬇ Export',
             text_color=[0.6, 0.6, 0.9, 1],
@@ -258,7 +270,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.export_btn.bind(on_press=self.export_selected_audio)
         bottom_bar.add_widget(self.export_btn)
         
-        # Delete
         self.delete_btn = MDFlatButton(
             text='🗑 Delete',
             text_color=[0.9, 0.4, 0.4, 1],
@@ -267,7 +278,6 @@ class AudioVaultWidget(MDBoxLayout):
         self.delete_btn.bind(on_press=self.delete_selected_audio)
         bottom_bar.add_widget(self.delete_btn)
         
-        # Back
         self.back_btn = MDFlatButton(
             text='← Back',
             text_color=[0.7, 0.7, 0.7, 1],
@@ -285,10 +295,19 @@ class AudioVaultWidget(MDBoxLayout):
         show_detailed_stats_dialog(self.audio_vault)
     
     def on_search_text_change(self, instance, text):
-        if hasattr(self, '_search_timer'):
+        if self._search_timer:
             self._search_timer.cancel()
+            self._search_timer = None
         
-        self._search_timer = Clock.schedule_once(lambda dt: self.refresh_audio_grid(), 0.5)
+        if self._is_destroyed:
+            return
+        
+        def timer_callback(dt):
+            if not self._is_destroyed and hasattr(self, 'refresh_audio_grid'):
+                self.refresh_audio_grid()
+            self._search_timer = None
+        
+        self._search_timer = Clock.schedule_once(timer_callback, 0.5)
     
     def refresh_audio_vault(self, instance=None):
         self.update_stats()
@@ -314,7 +333,6 @@ class AudioVaultWidget(MDBoxLayout):
             self.stats_label.text = stats_text
             
         except Exception as e:
-            print(f"Error updating stats: {e}")
             self.stats_label.text = "Error loading statistics"
     
     def refresh_audio_grid(self):
@@ -343,7 +361,6 @@ class AudioVaultWidget(MDBoxLayout):
                     self.selected_audio = audio_file
                 
         except Exception as e:
-            print(f"Error refreshing audio grid: {e}")
             error_card = MDCard(
                 size_hint_y=None,
                 height=dp(60),
@@ -359,7 +376,6 @@ class AudioVaultWidget(MDBoxLayout):
             self.audio_grid.add_widget(error_card)
     
     def create_empty_state_widget(self):
-        """Create empty state with modern styling"""
         empty_card = MDCard(
             orientation='vertical',
             size_hint_y=None,
@@ -383,10 +399,8 @@ class AudioVaultWidget(MDBoxLayout):
         return empty_card
     
     def create_audio_widget(self, audio_file):
-        """Create modern audio file card"""
         is_selected = self.selected_audio and self.selected_audio['id'] == audio_file['id']
         
-        # Main card with modern styling
         audio_card = MDCard(
             orientation='horizontal',
             size_hint_y=None,
@@ -398,7 +412,6 @@ class AudioVaultWidget(MDBoxLayout):
             ripple_behavior=True
         )
         
-        # Music note icon
         icon_container = MDBoxLayout(
             orientation='vertical',
             size_hint_x=None,
@@ -430,14 +443,12 @@ class AudioVaultWidget(MDBoxLayout):
         icon_container.add_widget(thumbnail)
         audio_card.add_widget(icon_container)
         
-        # File info section
         info_layout = MDBoxLayout(
             orientation='vertical',
             size_hint_x=0.6,
             spacing=5
         )
         
-        # Filename
         filename = audio_file['display_name']
         if len(filename) > 40:
             filename = filename[:37] + "..."
@@ -451,7 +462,6 @@ class AudioVaultWidget(MDBoxLayout):
         )
         info_layout.add_widget(title_label)
         
-        # File details
         size_mb = audio_file['size_mb']
         duration_str = audio_file.get('duration_str', 'Unknown')
         format_info = audio_file.get('format_info', 'Unknown')
@@ -466,7 +476,6 @@ class AudioVaultWidget(MDBoxLayout):
         )
         info_layout.add_widget(details_label)
         
-        # Format
         format_label = MDLabel(
             text=format_info,
             font_style="Caption", 
@@ -477,7 +486,6 @@ class AudioVaultWidget(MDBoxLayout):
         
         audio_card.add_widget(info_layout)
         
-        # Action buttons
         button_layout = MDBoxLayout(
             orientation='horizontal',
             size_hint_x=None,
@@ -485,7 +493,6 @@ class AudioVaultWidget(MDBoxLayout):
             spacing=10
         )
         
-        # Play button
         play_btn = MDRaisedButton(
             text='▶️ Play',
             md_bg_color=[0.2, 0.6, 0.8, 1],
@@ -496,7 +503,6 @@ class AudioVaultWidget(MDBoxLayout):
         play_btn.bind(on_press=lambda x: self.play_audio_file(audio_file))
         button_layout.add_widget(play_btn)
         
-        # Info button  
         info_btn = MDRaisedButton(
             text='ℹ️ Info',
             md_bg_color=[0.5, 0.5, 0.5, 1],
@@ -509,14 +515,12 @@ class AudioVaultWidget(MDBoxLayout):
         
         audio_card.add_widget(button_layout)
         
-        # Add click to select functionality
         audio_card.bind(on_release=lambda x: self.select_audio_file(audio_file))
         
         return audio_card
     
     def select_audio_file(self, audio_file):
         self.selected_audio = audio_file
-        print(f"✅ Audio file selected: {audio_file['display_name']}")
         self.refresh_audio_grid()
     
     def play_audio_file(self, audio_file):
@@ -566,7 +570,6 @@ class AudioVaultWidget(MDBoxLayout):
                 Clock.schedule_once(lambda dt: popup.dismiss(), 4)
                 
         except Exception as e:
-            print(f"Error opening audio file: {e}")
             popup = Popup(
                 title='❌ Error',
                 content=MDLabel(text=f'Could not open audio file:\n{str(e)}'),
@@ -603,7 +606,7 @@ class AudioVaultWidget(MDBoxLayout):
         self.selected_audio = None
     
     def back_to_vault(self, instance):
-        print("Going back to main vault screen from audio vault...")
+        self.cleanup()
         
         if hasattr(self.audio_vault.app, 'show_vault_main'):
             self.audio_vault.app.show_vault_main()
@@ -611,22 +614,28 @@ class AudioVaultWidget(MDBoxLayout):
 
 def integrate_audio_vault(vault_app):
     if hasattr(vault_app, 'audio_vault'):
-        print("⚠️ Audio vault already initialized")
         return vault_app.audio_vault
     
     try:
         from audio_vault_core import AudioVaultCore
         vault_app.audio_vault = AudioVaultCore(vault_app)
     except ImportError as e:
-        print(f"❌ Error importing AudioVaultCore: {e}")
         return None
     
     def show_audio_vault():
-        print("Showing audio vault...")
+        if hasattr(vault_app, '_current_audio_widget'):
+            try:
+                vault_app._current_audio_widget.cleanup()
+                del vault_app._current_audio_widget
+            except:
+                pass
+        
         vault_app.main_layout.clear_widgets()
         
         audio_vault_widget = AudioVaultWidget(vault_app.audio_vault)
         vault_app.main_layout.add_widget(audio_vault_widget)
+        
+        vault_app._current_audio_widget = audio_vault_widget
         
         vault_app.current_screen = 'audio_vault'
     

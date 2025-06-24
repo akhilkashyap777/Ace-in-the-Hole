@@ -564,6 +564,3 @@ def show_error_popup(message):
     )
     popup.open()
     Clock.schedule_once(lambda dt: popup.dismiss(), 4)
-
-print("✅ Video Vault Dialogs module loaded successfully")
-print("🎯 All dialogs converted to BlueGray theme with MDComponents")

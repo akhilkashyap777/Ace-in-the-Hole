@@ -304,8 +304,3 @@ class VideoCameraModule:
         )
         popup.open()
         Clock.schedule_once(lambda dt: popup.dismiss(), duration)
-
-print("✅ Video Camera Module loaded successfully")
-print("🎥 Features: Front/back camera video recording for Android")
-print("🔒 Integration: Direct saving to video vault with thumbnail generation")
-print("🎨 UI: Purple-themed camera buttons for video")

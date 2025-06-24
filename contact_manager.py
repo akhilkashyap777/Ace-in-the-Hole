@@ -700,9 +700,3 @@ def integrate_contact_management(vault_app):
     print("🔧 SIMPLIFIED: No runtime patching - cleaner architecture")
     
     return vault_app.contact_manager
-
-
-print("✅ Contact Manager loaded successfully")
-print(f"📱 Platform: {'Android' if ANDROID else 'Desktop'}")
-print("📞 Features: Contact parsing, calling, email, maps integration")
-print("🧹 CLEANED: Removed unused get_document_preview override")

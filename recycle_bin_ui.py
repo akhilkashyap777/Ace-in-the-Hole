@@ -259,50 +259,83 @@ class RecycleBinWidget(MDBoxLayout):
             print(f"Error updating stats: {e}")
             self.stats_label.text = "❌ Error loading statistics"
     
+    def cleanup_file_grid_widgets(self):
+        """Properly cleanup all widgets in file grid before clearing"""
+        try:
+            for widget in self.file_grid.children[:]:
+                if hasattr(widget, 'children'):
+                    self.cleanup_widget_tree(widget)
+        except Exception as e:
+            print(f"Warning during widget cleanup: {e}")
+
+    def cleanup_widget_tree(self, widget):
+        """Recursively cleanup a widget tree and unbind all events"""
+        try:
+            event_types = ['on_press', 'on_release', 'on_touch_down', 'on_touch_up']
+            
+            for event_type in event_types:
+                if hasattr(widget, event_type):
+                    if hasattr(widget, '_event_listeners') and event_type in widget._event_listeners:
+                        if len(widget._event_listeners[event_type]) > 0:
+                            widget.unbind(**{event_type: None})
+            
+            if hasattr(widget, 'children'):
+                for child in widget.children[:]:
+                    self.cleanup_widget_tree(child)
+            
+            if hasattr(widget, 'clear_widgets'):
+                widget.clear_widgets()
+                
+        except Exception as e:
+            print(f"Warning cleaning widget {type(widget).__name__}: {e}")
+    
     def refresh_file_grid(self):
         """Refresh the file grid based on current filter"""
         try:
             selected_file_id = self.selected_file['recycled_id'] if self.selected_file else None
             
-            # Clear existing widgets
+            self.cleanup_file_grid_widgets()
             self.file_grid.clear_widgets()
             
-            # Get filtered files
             if self.current_filter == 'all':
                 files = self.recycle_bin.get_recycled_files()
             else:
                 files = self.recycle_bin.get_recycled_files(self.current_filter)
             
             if not files:
-                # Show empty state
                 empty_widget = self.create_empty_state_widget()
                 self.file_grid.add_widget(empty_widget)
                 return
             
-            # Create file widgets
             for file_info in files:
                 file_widget = self.create_file_widget(file_info)
                 self.file_grid.add_widget(file_widget)
                 
-                # Restore selection if file still exists
                 if selected_file_id and file_info['recycled_id'] == selected_file_id:
                     self.selected_file = file_info
                 
         except Exception as e:
             print(f"Error refreshing file grid: {e}")
-            error_card = MDCard(
-                size_hint_y=None,
-                height=dp(60),
-                padding=15,
-                md_bg_color=[0.8, 0.2, 0.2, 0.3]
-            )
-            error_label = MDLabel(
-                text=f"❌ Error loading files: {str(e)}",
-                text_color=[1, 0.4, 0.4, 1],
-                halign="center"
-            )
-            error_card.add_widget(error_label)
+            self.file_grid.clear_widgets()
+            error_card = self.create_error_widget(str(e))
             self.file_grid.add_widget(error_card)
+
+    def create_error_widget(self, error_message):
+        """Create error display widget"""
+        error_card = MDCard(
+            size_hint_y=None,
+            height=dp(80),
+            padding=15,
+            md_bg_color=[0.8, 0.2, 0.2, 0.3]
+        )
+        error_label = MDLabel(
+            text=f"❌ Error loading files: {error_message}",
+            text_color=[1, 0.4, 0.4, 1],
+            halign="center",
+            font_style="Body2"
+        )
+        error_card.add_widget(error_label)
+        return error_card
     
     def create_empty_state_widget(self):
         """Create widget for empty recycle bin state"""
@@ -496,6 +529,13 @@ class RecycleBinWidget(MDBoxLayout):
         """Confirm emptying entire recycle bin"""
         confirm_empty_all_dialog(self.recycle_bin, self.refresh_recycle_bin_and_clear_selection)
     
+    def cleanup(self):
+        """Cleanup method for the entire RecycleBinWidget"""
+        self.cleanup_file_grid_widgets()
+        self.file_grid.clear_widgets()
+        self.selected_file = None
+        self.current_filter = 'all'
+    
     def back_to_vault(self, instance):
         """Go back to main vault screen"""
         print("Going back to main vault screen from recycle bin...")
@@ -526,8 +566,3 @@ def integrate_recycle_bin(vault_app):
     vault_app.show_recycle_bin = show_recycle_bin
     
     return vault_app.recycle_bin
-
-print("✅ Recycle Bin UI module loaded successfully")
-print("🎯 Updated with BlueGray theme and MDComponents")
-print("♻️ Complete restore and permanent deletion capabilities")
-print("📱 Modern card-based interface with proper selection handling")

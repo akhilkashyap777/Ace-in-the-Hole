@@ -525,6 +525,3 @@ def create_simple_audio_info_popup(audio_file_info):
     popup.open()
     
     return popup
-
-print(f"🎵 Pygame support: {'✅' if PYGAME_AVAILABLE else '❌'}")
-print(f"🎵 Kivy Audio support: {'✅' if KIVY_AUDIO_AVAILABLE else '❌'}")

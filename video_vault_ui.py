@@ -13,7 +13,12 @@ from kivymd.uix.card import MDCard
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.image import Image
+from kivymd.uix.card import MDCard
 from video_camera_module import VideoCameraModule
+import gc
 
 # Import the core video vault functionality
 from video_vault_core import VideoVaultCore, ANDROID
@@ -469,142 +474,105 @@ class VideoGalleryWidget(MDBoxLayout):
             Clock.schedule_once(lambda dt: self.load_videos_batch(videos, end_index), 0.1)
     
     def cleanup_video_widgets(self):
-        """Clean up video widgets to prevent memory leaks"""
-        print(f"Cleaning up {len(self.video_widgets)} video widgets")
+        """Enhanced cleanup with proper event unbinding"""
+        if hasattr(self, '_widget_bindings'):
+            for widget, event, callback in self._widget_bindings:
+                try:
+                    if widget:
+                        widget.unbind(**{event: callback})
+                except:
+                    pass
+            self._widget_bindings.clear()
+        
         for widget in self.video_widgets:
             try:
                 if hasattr(widget, 'children'):
                     for child in widget.children:
-                        if hasattr(child, 'texture'):
-                            child.texture = None
+                        if hasattr(child, 'children'):
+                            for grandchild in child.children:
+                                if hasattr(grandchild, 'texture'):
+                                    grandchild.texture = None
+                                if hasattr(grandchild, 'source'):
+                                    grandchild.source = ''
+                
+                if hasattr(widget, 'clear_widgets'):
+                    widget.clear_widgets()
             except:
                 pass
-        self.video_widgets.clear()
         
-        # Force garbage collection
+        self.video_widgets.clear()
         gc.collect()
     
     def create_video_widget(self, video_path):
-        """Create a widget for displaying a video thumbnail with modern design"""
+        
         is_selected = self.selected_video == video_path
         
-        # Main card with modern styling
         video_card = MDCard(
-            orientation='vertical',
             size_hint_y=None,
             height=dp(280),
-            padding=10,
-            spacing=8,
-            elevation=4 if is_selected else 2,
             md_bg_color=[0.46, 0.53, 0.6, 1] if is_selected else [0.31, 0.35, 0.39, 0.9],
+            elevation=4 if is_selected else 2,
             ripple_behavior=True
         )
         
-        # Thumbnail container
-        thumbnail_container = MDBoxLayout(size_hint_y=0.7)
-        
-        try:
-            # Try to use thumbnail if available
-            thumb_path = self.video_vault.get_thumbnail_path(video_path)
-            
-            if thumb_path and os.path.exists(thumb_path):
-                print(f"Loading thumbnail: {thumb_path}")
-                # Create image widget
-                img = Image(
-                    source=thumb_path,
-                    fit_mode="cover"
-                )
-                thumbnail_container.add_widget(img)
-                
-            else:
-                # Fallback: create a visible widget with video icon
-                fallback_container = MDBoxLayout(orientation='vertical', spacing=5)
-                
-                icon_label = MDLabel(
-                    text='🎬',
-                    font_style="H2",
-                    halign="center",
-                    text_color="white"
-                )
-                fallback_container.add_widget(icon_label)
-                
-                tap_label = MDLabel(
-                    text='Tap to Select',
-                    font_style="Caption",
-                    halign="center",
-                    text_color=[0.8, 0.8, 0.8, 1]
-                )
-                fallback_container.add_widget(tap_label)
-                
-                thumbnail_container.add_widget(fallback_container)
-                
-        except Exception as e:
-            print(f"Error loading thumbnail for {video_path}: {e}")
-            # Error fallback
-            error_container = MDBoxLayout(orientation='vertical', spacing=5)
-            
-            error_icon = MDLabel(
-                text='🎬',
-                font_style="H2",
-                halign="center",
-                text_color=[1, 0.6, 0.6, 1]  # Light red
-            )
-            error_container.add_widget(error_icon)
-            
-            error_label = MDLabel(
-                text='Video\n(Tap to Select)',
-                font_style="Caption",
-                halign="center",
-                text_color=[1, 0.6, 0.6, 1]
-            )
-            error_container.add_widget(error_label)
-            
-            thumbnail_container.add_widget(error_container)
-        
-        video_card.add_widget(thumbnail_container)
-        
-        # Video info section
-        info_layout = MDBoxLayout(
+        main_layout = BoxLayout(
             orientation='vertical',
-            size_hint_y=0.3,
-            spacing=3
+            padding=10,
+            spacing=8
         )
         
-        # Video filename
+        thumb_path = self.video_vault.get_thumbnail_path(video_path)
+        
+        if thumb_path and os.path.exists(thumb_path):
+            img = Image(
+                source=thumb_path,
+                size_hint_y=0.7
+            )
+            main_layout.add_widget(img)
+        else:
+            fallback_label = Label(
+                text='🎬\nTap to Select',
+                size_hint_y=0.7,
+                color=[0.8, 0.8, 0.8, 1],
+                halign='center'
+            )
+            main_layout.add_widget(fallback_label)
+        
         filename = os.path.basename(video_path)
         display_name = filename[:20] + '...' if len(filename) > 20 else filename
         
-        name_label = MDLabel(
-            text=display_name,
-            font_style="Subtitle2",
-            text_color="white",
-            halign="center",
-            bold=True if is_selected else False
-        )
-        info_layout.add_widget(name_label)
-        
-        # Get video info safely
         video_info = self.video_vault.get_video_info_safe(video_path)
         
-        # Video details
-        details_text = f"{video_info['size']} | {video_info['duration']}"
+        info_text = f"{display_name}\n{video_info['size']} | {video_info['duration']}"
         if is_selected:
-            details_text += "\n🔴 SELECTED"
+            info_text += "\n🔴 SELECTED"
         
-        details_label = MDLabel(
-            text=details_text,
-            font_style="Caption",
-            text_color=[0.9, 0.9, 0.9, 1] if is_selected else [0.7, 0.7, 0.7, 1],
-            halign="center"
+        info_label = Label(
+            text=info_text,
+            size_hint_y=0.3,
+            color=[0.9, 0.9, 0.9, 1] if is_selected else [0.7, 0.7, 0.7, 1],
+            halign='center'
         )
-        info_layout.add_widget(details_label)
+        main_layout.add_widget(info_label)
         
-        video_card.add_widget(info_layout)
+        video_card.add_widget(main_layout)
         
-        # Make entire card clickable
-        video_card.bind(on_release=lambda x: self.select_video(video_path))
+        def create_select_callback(path):
+            def callback(instance):
+                self.select_video(path)
+            return callback
+        
+        select_callback = create_select_callback(video_path)
+        video_card.bind(on_release=select_callback)
+        
+        if not hasattr(self, '_widget_bindings'):
+            self._widget_bindings = []
+        self._widget_bindings.append((video_card, 'on_release', select_callback))
         
         return video_card
+
+        gc.collect()
+
     
     def select_video(self, video_path):
         """Select a video and show enhanced options dialog"""
@@ -755,9 +723,3 @@ def get_vault_statistics(vault_instance):
     except Exception as e:
         print(f"Error getting vault statistics: {e}")
         return {'video_count': 0, 'total_size_mb': 0, 'vault_directory': 'Unknown'}
-
-print("✅ Video Vault UI module loaded successfully with BlueGray theme")
-print("🎬 Features: Modern card-based grid view, selection, export, recycle bin integration")
-print("💾 Memory-efficient batch loading for large video collections")
-print("📤 Complete export functionality with folder selection")
-print("♻️ Safe deletion with recycle bin integration")

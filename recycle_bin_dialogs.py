@@ -447,6 +447,3 @@ def show_no_selection_popup(action):
     )
     popup.open()
     Clock.schedule_once(lambda dt: popup.dismiss(), 2)
-
-print("✅ Recycle Bin Dialogs module loaded successfully")
-print("🎯 All dialogs converted to BlueGray theme with MDComponents")

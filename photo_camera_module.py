@@ -289,8 +289,3 @@ class PhotoCameraModule:
         )
         popup.open()
         Clock.schedule_once(lambda dt: popup.dismiss(), duration)
-
-print("✅ Photo Camera Module loaded successfully")
-print("📸 Features: Front/back camera photo capture for Android")
-print("🔒 Integration: Direct saving to photo vault")
-print("🎨 UI: BlueGray theme camera buttons")

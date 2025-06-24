@@ -708,8 +708,3 @@ class VideoVaultCoreExtended(VideoVaultCore):
 
 # Export the extended class as the main class
 VideoVaultCore = VideoVaultCoreExtended
-
-print("✅ Video Vault Operations loaded successfully")
-print("🧹 Enhanced memory management with ResourceManager")
-print("📋 Optimized video info caching and background processing")
-print("🗑️ Improved deletion with comprehensive resource cleanup")
