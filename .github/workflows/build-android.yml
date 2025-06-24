@@ -1,0 +1,39 @@
+name: Build Android APK
+
+on: [push, pull_request]
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install buildozer dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev automake
+        pip install --user --upgrade Cython==0.29.33 virtualenv
+        pip install --user --upgrade buildozer
+        
+    - name: Set up Java
+      run: |
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
+        
+    - name: Build Android APK
+      run: |
+        export PATH=$PATH:~/.local/bin/
+        yes | buildozer android debug
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: monte-card-android-apk
+        path: bin/*.apk
