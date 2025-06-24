@@ -1,0 +1,1 @@
+requirements = python3,cryptography,imageio,jnius,kivy,kivymd,mutagen,pillow,plyer,psutil,pygame,bcrypt,qrcode,requests
