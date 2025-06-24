@@ -18,14 +18,14 @@ jobs:
     - name: Install buildozer dependencies
       run: |
         sudo apt update
-        sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev automake
+        sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev automake openjdk-17-jdk
         pip install --user --upgrade Cython==0.29.33 virtualenv
         pip install --user --upgrade buildozer
         
     - name: Set up Java
       run: |
-        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
-        echo "JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64" >> $GITHUB_ENV
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
         
     - name: Build Android APK
       run: |
