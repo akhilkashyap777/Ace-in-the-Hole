@@ -1,0 +1,80 @@
+name: Build Windows Executable
+
+on:
+  push:
+    branches: [ clean/remove-memory-profiler ]
+  pull_request:
+    branches: [ clean/remove-memory-profiler ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install nuitka
+        pip install kivymd
+        pip install kivy
+        pip install pillow
+        pip install requests
+        pip install qrcode
+        pip install bcrypt
+        pip install cryptography
+        pip install pygame
+        pip install plyer
+        pip install opencv-python
+        pip install papaparse
+        pip install openpyxl
+        pip install docx2txt
+        pip install mutagen
+        
+    - name: Build Windows executable
+      run: |
+        nuitka --standalone ^
+        --include-package=kivymd ^
+        --include-package=kivy ^
+        --include-package=PIL ^
+        --include-package=requests ^
+        --include-package=qrcode ^
+        --include-package=bcrypt ^
+        --include-package=cryptography ^
+        --include-package=pygame ^
+        --include-package=plyer ^
+        --include-package=cv2 ^
+        --include-package=openpyxl ^
+        --include-package=docx2txt ^
+        --include-package=mutagen ^
+        --windows-disable-console ^
+        --output-filename=VaultApp-Windows.exe ^
+        --assume-yes-for-downloads ^
+        main.py
+        
+    - name: Upload Windows executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: VaultApp-Windows-Executable
+        path: main.dist/
+        retention-days: 30
+        
+    - name: Create release info
+      run: |
+        echo "Build completed successfully!" > build-info.txt
+        echo "Download the VaultApp-Windows-Executable artifact" >> build-info.txt
+        echo "Extract and run VaultApp-Windows.exe" >> build-info.txt
+        
+    - name: Upload build info
+      uses: actions/upload-artifact@v4
+      with:
+        name: Build-Instructions
+        path: build-info.txt
