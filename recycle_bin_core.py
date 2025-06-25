@@ -1,7 +1,6 @@
 import os
 import json
 import shutil
-import threading
 from datetime import datetime, timedelta
 from kivy.clock import Clock
 

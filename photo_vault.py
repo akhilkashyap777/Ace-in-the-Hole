@@ -1,37 +1,3 @@
-# photo_vault.py - Universal Photo Vault for Secret Vault App
-"""
-Universal Photo Vault for the Secret Vault App
-
-This module provides secure storage and management for ANY image file type:
-- Universal image detection using MIME type + PIL verification  
-- No dependency on file extensions - detects actual image content
-- Support for: JPG, PNG, GIF, BMP, WebP, TIFF, SVG, HEIC, AVIF, RAW formats
-- And literally any other image format (future-proof)
-
-Key Features:
-✅ Cross-platform: Android, Windows, macOS, Linux
-✅ Secure storage in app-private directories
-✅ Universal image format detection (MIME + PIL)
-✅ Export functionality with folder selection
-✅ Recycle bin integration for safe deletion
-✅ Memory-efficient batch loading
-✅ Grid-based gallery view
-
-Architecture:
-- photo_vault_core.py: Core functionality (file operations, image detection)
-- photo_vault_ui.py: User interface components (gallery, export, viewing)
-- photo_vault.py: Main integration file (this file)
-
-Usage in main.py:
-    from photo_vault import integrate_photo_vault
-    integrate_photo_vault(self)  # Add this after secure storage setup
-    
-    # Then add a button in your vault main screen:
-    photo_btn = Button(text='🖼️ Photos')
-    photo_btn.bind(on_press=lambda x: self.show_photo_gallery())
-"""
-
-# Import all functionality from separate files
 from photo_vault_core import PhotoVaultCore
 from photo_vault_ui import PhotoGalleryWidget
 

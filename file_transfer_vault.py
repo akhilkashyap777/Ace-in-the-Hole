@@ -1,10 +1,3 @@
-# file_transfer_vault.py - WiFi File Transfer for Secret Vault App
-"""
-WiFi File Transfer System for Secret Vault App
-Integrates with your existing secure storage and vault architecture
-✅ OPTIMIZED VERSION - Fixed memory leaks and performance issues
-"""
-
 import os
 import socket
 import threading
@@ -14,17 +7,11 @@ import io
 import base64
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-import requests
+from urllib.parse import urlparse
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
-from kivymd.uix.button import MDRaisedButton, MDIconButton
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.card import MDCard
-from kivymd.uix.textfield import MDTextField
-from kivymd.uix.selectioncontrol import MDCheckbox
-from kivymd.uix.list import MDList, ThreeLineListItem
-from kivymd.uix.scrollview import MDScrollView
-from kivy.uix.image import Image
 from kivy.clock import Clock
 
 # Optional: Try to import Cython optimized functions

@@ -1,8 +1,7 @@
-import os
 import threading
 from datetime import datetime
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivy.uix.popup import Popup
 from kivy.clock import Clock

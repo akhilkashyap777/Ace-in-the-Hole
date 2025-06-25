@@ -1,42 +1,30 @@
-import os
-import threading
-import subprocess
-import sys
 import weakref
+from collections import deque
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
 from kivymd.uix.button import MDRaisedButton, MDIconButton
 from kivymd.uix.card import MDCard
-from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.scrollview import MDScrollView
 from kivy.core.window import Window
-from game_widget import GameWidget
-from photo_vault import integrate_photo_vault
-from video_vault import integrate_video_vault
-from recycle_bin_ui import integrate_recycle_bin
-from secure_storage import SecureStorage
-from vault_secure_integration import initialize_secure_vault
-from document_vault import integrate_document_vault
-from complete_contact_integration import setup_contact_system
-from audio_vault_main_ui import integrate_audio_vault
-from password_manager import PasswordManager
-from password_ui import GamePasswordUI
-from file_transfer_vault import integrate_file_transfer
+from kivy.config import Config
 
-try:
-    from android.permissions import request_permissions, Permission
-    from plyer import notification
-    ANDROID = True
-except ImportError:
-    ANDROID = False
+# Lazy imports - loaded only when needed
+def get_android_modules():
+    try:
+        from android.permissions import request_permissions, Permission
+        from plyer import notification
+        return request_permissions, Permission, notification, True
+    except ImportError:
+        return None, None, None, False
 
 class VaultCardManager:
     """Manages vault cards lifecycle and prevents memory leaks"""
+    __slots__ = ('app_ref', 'active_cards')
     
     def __init__(self, app_ref):
         self.app_ref = app_ref
-        self.active_cards = []
+        self.active_cards = set()  # Set instead of list for better memory efficiency
         
     def create_card(self, icon, title, subtitle, method_name):
         """Create a single vault card with proper lifecycle management"""
@@ -52,7 +40,8 @@ class VaultCardManager:
             ripple_behavior=True
         )
         
-        card.md_bg_color = [0.37, 0.49, 0.55, 1]
+        # Use tuple for RGB values (immutable)
+        card.md_bg_color = (0.37, 0.49, 0.55, 1)
         
         icon_btn = MDIconButton(
             icon=icon,
@@ -82,7 +71,7 @@ class VaultCardManager:
         subtitle_label = MDLabel(
             text=subtitle,
             font_style="Caption",
-            text_color=[0.9, 0.9, 0.9, 0.8],
+            text_color=(0.9, 0.9, 0.9, 0.8),  # Tuple instead of list
             size_hint_y=None,
             height="20dp"
         )
@@ -96,7 +85,7 @@ class VaultCardManager:
                 getattr(app, method_name)()
         
         card.bind(on_release=on_card_press)
-        self.active_cards.append(card)
+        self.active_cards.add(card)  # Add to set
         
         return card
     
@@ -109,6 +98,7 @@ class VaultCardManager:
 
 class ScreenManager:
     """Manages screen transitions and widget lifecycle"""
+    __slots__ = ('app_ref', 'current_screen', 'screen_widgets')
     
     def __init__(self, app_ref):
         self.app_ref = app_ref
@@ -141,41 +131,88 @@ class ScreenManager:
             del self.screen_widgets[self.current_screen]
 
 class VaultApp(MDApp):
+    # Constants as class attributes (more memory efficient)
+    TARGET_PATTERN = ('up', 'down', 'up', 'down', 'up')  # Tuple instead of list
+    VAULT_CARDS = (  # Tuple for immutable data
+        ("image-multiple", "Hidden Photos", "Secure photo storage", "show_photo_gallery"),
+        ("video", "Hidden Videos", "Private video collection", "show_video_gallery"),
+        ("file-document", "Documents", "Important files & papers", "show_document_vault"),
+        ("music", "Audio Files", "Private audio recordings", "show_audio_vault"),
+        ("delete", "Recycle Bin", "Restore deleted files", "show_recycle_bin"),
+        ("wifi", "File Transfer", "Share files via WiFi", "show_file_transfer")
+    )
+    
+    # Key mappings as frozenset for efficient lookup
+    UP_KEYS = frozenset({24, 273})
+    DOWN_KEYS = frozenset({25, 274})
+    
     def __init__(self):
         super().__init__()
         
-        self.volume_pattern = []
-        self.target_pattern = ['up', 'down', 'up', 'down', 'up']
+        # Use deque with maxlen for automatic size limiting
+        self.volume_pattern = deque(maxlen=5)
         self.vault_open = False
         self.current_screen = 'game'
         
         self.screen_manager = ScreenManager(weakref.ref(self))
         self.card_manager = None
         
-        self.password_manager = PasswordManager("SecretVault")
-        self.password_ui = GamePasswordUI(self)
+        # Lazy load these modules
+        self.password_manager = None
+        self.password_ui = None
+        
+    def _init_password_system(self):
+        """Lazy initialization of password system"""
+        if self.password_manager is None:
+            from password_manager import PasswordManager
+            from password_ui import GamePasswordUI
+            
+            self.password_manager = PasswordManager("SecretVault")
+            self.password_ui = GamePasswordUI(self)
         
     def build(self):
         """Build the application"""
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "BlueGray"
         
-        if ANDROID:
+        # Disable red dots
+        Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+        Config.set('graphics', 'show_cursor', '1')
+        
+        # Lazy load Android modules
+        request_permissions, Permission, notification, is_android = get_android_modules()
+        if is_android and request_permissions:
             request_permissions([Permission.WRITE_EXTERNAL_STORAGE])
         
         Window.bind(on_key_down=self.on_key_down)
         
         self.main_layout = MDBoxLayout(orientation='vertical')
         
-        self.secure_storage = SecureStorage("SecretVault")
+        # Lazy load secure storage
+        self._init_secure_storage()
         self.initialize_vault_modules()
         
         self.show_game_screen()
         
         return self.main_layout
     
+    def _init_secure_storage(self):
+        """Lazy initialization of secure storage"""
+        from secure_storage import SecureStorage
+        self.secure_storage = SecureStorage("SecretVault")
+    
     def initialize_vault_modules(self):
         """Initialize all vault modules once"""
+        # Import only when needed
+        from vault_secure_integration import initialize_secure_vault
+        from document_vault import integrate_document_vault
+        from complete_contact_integration import setup_contact_system
+        from audio_vault_main_ui import integrate_audio_vault
+        from photo_vault import integrate_photo_vault
+        from video_vault import integrate_video_vault
+        from recycle_bin_ui import integrate_recycle_bin
+        from file_transfer_vault import integrate_file_transfer
+        
         initialize_secure_vault(self)
         integrate_document_vault(self)
         setup_contact_system(self)
@@ -187,6 +224,8 @@ class VaultApp(MDApp):
     
     def create_game_widget(self):
         """Factory method to create game screen"""
+        from game_widget import GameWidget  # Lazy import
+        
         container = MDBoxLayout(orientation='vertical')
         
         game_widget = GameWidget()
@@ -246,16 +285,8 @@ class VaultApp(MDApp):
             adaptive_height=True
         )
         
-        vault_cards = [
-            ("image-multiple", "Hidden Photos", "Secure photo storage", "show_photo_gallery"),
-            ("video", "Hidden Videos", "Private video collection", "show_video_gallery"),
-            ("file-document", "Documents", "Important files & papers", "show_document_vault"),
-            ("music", "Audio Files", "Private audio recordings", "show_audio_vault"),
-            ("delete", "Recycle Bin", "Restore deleted files", "show_recycle_bin"),
-            ("wifi", "File Transfer", "Share files via WiFi", "show_file_transfer")
-        ]
-        
-        for icon, title, subtitle, method_name in vault_cards:
+        # Use the class constant tuple
+        for icon, title, subtitle, method_name in self.VAULT_CARDS:
             card = self.card_manager.create_card(icon, title, subtitle, method_name)
             cards_layout.add_widget(card)
         
@@ -287,7 +318,7 @@ class VaultApp(MDApp):
     def show_game_screen(self):
         """Show the game screen"""
         self.vault_open = False
-        self.volume_pattern = []
+        self.volume_pattern.clear()
         self.screen_manager.transition_to('game', self.create_game_widget)
     
     def show_vault_screen(self):
@@ -295,7 +326,9 @@ class VaultApp(MDApp):
         self.vault_open = True
         self.screen_manager.transition_to('vault_main', self.create_vault_widget)
         
-        if ANDROID:
+        # Lazy load notification
+        _, _, notification, is_android = get_android_modules()
+        if is_android and notification:
             try:
                 notification.notify(
                     title='Vault Opened',
@@ -324,30 +357,27 @@ class VaultApp(MDApp):
             game_widget.game.show_cards()
     
     def on_key_down(self, window, key, scancode, codepoint, modifier):
-        """Handle volume button presses"""
-        key_map = {
-            24: 'up',
-            25: 'down',
-            273: 'up',
-            274: 'down'
-        }
+        """Handle volume button presses - optimized version"""
         
-        if key in key_map:
-            button = key_map[key]
-            self.volume_pattern.append(button)
-            
-            if len(self.volume_pattern) > 5:
-                self.volume_pattern.pop(0)
-            
-            if self.volume_pattern == self.target_pattern:
-                self.request_vault_access()
-            
-            return True
+        if key in self.UP_KEYS:
+            button = 'up'
+        elif key in self.DOWN_KEYS:
+            button = 'down'
+        else:
+            return False
         
-        return False
+        self.volume_pattern.append(button)
+        
+        # Convert deque to tuple for comparison (more efficient than list)
+        if tuple(self.volume_pattern) == self.TARGET_PATTERN:
+            self.request_vault_access()
+        
+        return True
     
     def request_vault_access(self):
         """Handle vault access request"""
+        self._init_password_system()  # Lazy load password system
+        
         if self.password_manager.is_first_launch():
             self.password_ui.show_first_setup()
         else:

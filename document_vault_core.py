@@ -665,7 +665,4 @@ class DocumentVaultCore:
         except Exception as e:
             callback({'success': False, 'error': f'Fallback folder creation failed: {e}'})
 
-print("✅ Universal Document Vault Core loaded successfully")
 print(f"📁 Supports {len(DocumentVaultCore.FILE_CATEGORIES)} file categories")
-print("🌐 Cross-platform: Android, Windows, macOS, Linux")
-print("🔮 Future-ready: Extensible for contacts, certificates, etc.")

@@ -2,7 +2,7 @@ import os
 import re
 import threading
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivy.uix.popup import Popup
 from kivy.uix.filechooser import FileChooserIconView

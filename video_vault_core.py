@@ -1,57 +1,3 @@
-# video_vault.py - Main video vault file with memory leak fixes
-"""
-Video Vault for the Secret Vault App - OPTIMIZED VERSION
-
-This file combines the core video vault functionality with the UI components.
-Split into multiple files for better organization and memory management:
-
-- video_vault_core_optimized.py: Core functionality with ResourceManager
-- video_vault_operations.py: Extended operations and deletion methods  
-- video_vault_ui.py: User interface components (gallery widget, file selection dialogs)
-
-MAJOR MEMORY LEAK FIXES IMPLEMENTED:
-1. ResourceManager with WeakRefs for automatic cleanup
-2. Proper ImageIO reader tracking and disposal
-3. Widget reference management to prevent accumulation
-4. Background thread tracking and management
-5. Temporary file cleanup system
-6. Periodic cleanup scheduler
-7. Video info caching to avoid repeated file operations
-8. Optimized thumbnail generation with existence checking
-
-PERFORMANCE OPTIMIZATIONS:
-1. Thumbnail caching - only generate if doesn't exist
-2. Faster thumbnail generation (smaller size, lower quality)
-3. Video info caching with persistent storage
-4. ffprobe integration for faster duration detection
-5. Background batch processing for video info
-6. Reduced garbage collection frequency
-7. Timeout protection for video processing
-
-The main issue we were solving is memory accumulation from:
-- ImageIO reader objects not being properly closed
-- Video player widgets accumulating without cleanup
-- Temporary files not being removed
-- Repeated video processing operations
-- Widget references holding memory indefinitely
-
-Key fixes implemented:
-1. WeakSet/WeakRef usage for automatic cleanup
-2. Centralized ResourceManager for all resource types
-3. Periodic cleanup scheduler (every 30 seconds)
-4. Proper exception handling with cleanup in finally blocks
-5. Cache management with expiration
-6. Background thread coordination
-
-Usage:
-- Import and use integrate_video_vault(app) in your main app
-- The vault will handle video import, thumbnail generation, and secure deletion
-- Memory usage will be much more stable and performant
-- Videos can be moved (more secure) or copied to the vault
-- Supports both Android and desktop platforms
-"""
-
-# Import the optimized core functionality
 from video_vault_operations import VideoVaultCore, ANDROID, IMAGEIO_AVAILABLE
 
 # Import UI components (unchanged, but will benefit from core optimizations)
@@ -207,9 +153,3 @@ def get_vault_statistics(vault_instance):
             'resource_stats': {},
             'cache_stats': {}
         }
-
-print("🎯 Additional debugging functions loaded:")
-print("   - get_memory_usage_stats() - Check current memory usage")
-print("   - force_full_cleanup(vault) - Force complete resource cleanup")  
-print("   - cleanup_temp_files() - Clean temporary deletion files")
-print("   - get_vault_statistics(vault) - Comprehensive vault stats")

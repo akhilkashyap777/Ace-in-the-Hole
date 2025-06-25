@@ -8,7 +8,6 @@ import time
 import re
 import json
 import signal
-from datetime import datetime
 from kivy.clock import Clock
 
 # Import the core class

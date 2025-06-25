@@ -1,15 +1,9 @@
 import os
-import shutil
 import threading
-import subprocess
 import platform
 import gc
-import time
-import re
 import json
-import signal
 import weakref
-from datetime import datetime
 from kivy.clock import Clock
 from PIL import Image as PILImage
 

@@ -1,15 +1,12 @@
 import os
-import sys
 import platform
-import json
-from pathlib import Path
 import threading
 import time
 
 # Try to import Android-specific modules
 try:
     from android.storage import app_storage_path
-    from jnius import autoclass, PythonJavaClass, java_method
+    from jnius import autoclass
     ANDROID = True
     
     # Android app context for private directories
@@ -51,7 +48,6 @@ class SecureStorage:
         self.recycle_dir = os.path.join(self.base_dir, "vault_recycle")
         self.config_dir = os.path.join(self.base_dir, "config")
         
-        print(f"✅ Secure storage initialized (lazy mode)")
         print(f"📁 Base directory: {self.base_dir}")
         print(f"🔒 Platform: {self.get_platform_name()}")
     
@@ -179,7 +175,6 @@ class SecureStorage:
             return os.path.join(os.path.expanduser("~"), f".{self.app_name}")
     
     def ensure_secure_directories(self):
-        """✅ OPTIMIZATION: Lazy directory creation - only when needed"""
         if self._directories_created:
             return  # Already created
         

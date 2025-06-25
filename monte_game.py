@@ -1,8 +1,6 @@
 # monte_game.py - Optimized version with performance improvements
 import pygame
 import random
-import time
-import math
 
 class MonteGame:
     def __init__(self, surface_size=(800, 600)):

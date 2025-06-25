@@ -2,7 +2,6 @@ import os
 import shutil
 import threading
 import gc
-import re
 from datetime import datetime
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout

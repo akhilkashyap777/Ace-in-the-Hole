@@ -15,19 +15,11 @@ except ImportError:
 # Try to import audio metadata libraries
 try:
     import mutagen
-    from mutagen.id3 import ID3NoHeaderError
     MUTAGEN_AVAILABLE = True
 except ImportError:
     MUTAGEN_AVAILABLE = False
-    print("⚠️ Mutagen not available - audio metadata extraction disabled")
 
 class AudioVaultCore:
-    """
-    Audio Vault Core - Handles all audio file operations
-    Supports any audio format with dynamic metadata extraction
-    """
-    
-    # Common audio extensions - easily extensible
     AUDIO_EXTENSIONS = {
         # Lossy formats
         '.mp3': 'MP3 Audio',
@@ -58,7 +50,6 @@ class AudioVaultCore:
         '.awb': 'AWB Audio'
     }
     
-    # Popular formats for filtering (if you decide to add filters later)
     POPULAR_FORMATS = ['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg']
     
     def __init__(self, app_instance):

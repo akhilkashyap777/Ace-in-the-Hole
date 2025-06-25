@@ -1,5 +1,4 @@
 from cx_Freeze import setup, Executable
-import sys
 import os
 
 # Set environment variables for Kivy

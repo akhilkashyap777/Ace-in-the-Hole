@@ -1,26 +1,6 @@
-# video_camera_module.py - Video Camera Integration
-"""
-Video Camera Module for Secret Vault App
-
-This module adds camera functionality specifically to the video vault.
-Simply import and attach to your VideoGalleryWidget.
-
-Usage in video_vault_ui.py:
-    from video_camera_module import VideoCameraModule
-    
-    # In VideoGalleryWidget.__init__():
-    self.camera_module = VideoCameraModule(self)
-    
-    # In VideoGalleryWidget.build_header():
-    camera_buttons = self.camera_module.build_camera_buttons()
-    header.add_widget(camera_buttons)
-"""
-
 import os
 import shutil
-import tempfile
 from datetime import datetime
-from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
@@ -32,16 +12,12 @@ from kivy.metrics import dp
 try:
     from android.permissions import request_permissions, Permission
     from android.storage import app_storage_path
-    from plyer import camera
     from jnius import autoclass, cast
     ANDROID = True
 except ImportError:
     ANDROID = False
 
 class VideoCameraModule:
-    """
-    Video Camera Module - Handles camera recording for video vault
-    """
     
     def __init__(self, video_gallery_widget):
         self.gallery_widget = video_gallery_widget
@@ -49,11 +25,9 @@ class VideoCameraModule:
         self.processing = False
     
     def build_camera_buttons(self):
-        """Build camera buttons for video recording"""
         if not ANDROID:
             return self.build_desktop_message()
         
-        # Android camera buttons with video theme
         camera_container = MDCard(
             orientation='horizontal',
             size_hint_y=None,
@@ -64,7 +38,6 @@ class VideoCameraModule:
             md_bg_color=[0.3, 0.2, 0.4, 0.9]  # Purple tint for video
         )
         
-        # Camera label
         camera_label = MDLabel(
             text='🎥 CAMERA',
             font_style="Subtitle1",
@@ -75,7 +48,6 @@ class VideoCameraModule:
         )
         camera_container.add_widget(camera_label)
         
-        # Front camera video button
         front_btn = MDRaisedButton(
             text='🤳 Front',
             md_bg_color=[0.6, 0.3, 0.9, 1],  # Purple
@@ -86,7 +58,6 @@ class VideoCameraModule:
         front_btn.bind(on_press=lambda x: self.record_video('front'))
         camera_container.add_widget(front_btn)
         
-        # Back camera video button
         back_btn = MDRaisedButton(
             text='🎥 Back',
             md_bg_color=[0.8, 0.4, 0.2, 1],  # Orange-red
@@ -121,7 +92,6 @@ class VideoCameraModule:
         return message_container
     
     def record_video(self, camera_type):
-        """Record video with specified camera"""
         if not ANDROID or self.processing:
             return
         
@@ -145,7 +115,6 @@ class VideoCameraModule:
                 self.processing = False
                 return
             
-            # Launch camera with intent
             self.launch_video_intent(camera_type, temp_path)
             
         except Exception as e:
@@ -167,7 +136,6 @@ class VideoCameraModule:
             return None
     
     def launch_video_intent(self, camera_type, temp_path):
-        """Launch Android camera for video recording"""
         try:
             # Get Android classes
             Intent = autoclass('android.content.Intent')
@@ -190,7 +158,6 @@ class VideoCameraModule:
             output_uri = Uri.fromFile(output_file)
             intent.putExtra('output', output_uri)
             
-            # Launch camera
             currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
             currentActivity.startActivityForResult(intent, 200)  # Video request code
             

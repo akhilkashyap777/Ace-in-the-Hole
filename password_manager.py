@@ -2,9 +2,7 @@
 # ✅ OPTIMIZED VERSION - Fixed memory leaks and performance issues
 import os
 import json
-import hashlib
 import time
-from datetime import datetime, timedelta
 import bcrypt
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes

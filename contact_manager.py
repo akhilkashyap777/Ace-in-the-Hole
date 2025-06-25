@@ -1,12 +1,9 @@
-import os
 import re
-from datetime import datetime
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.gridlayout import GridLayout
 from kivy.metrics import dp
 
 # Cross-platform imports
@@ -695,8 +692,6 @@ def integrate_contact_management(vault_app):
     # Create contact manager instance
     vault_app.contact_manager = ContactManager(vault_app)
     
-    print("✅ Contact management integrated successfully")
     print("📞 Android calling enabled" if ANDROID else "🖥️ Desktop mode - calling disabled")
-    print("🔧 SIMPLIFIED: No runtime patching - cleaner architecture")
     
     return vault_app.contact_manager

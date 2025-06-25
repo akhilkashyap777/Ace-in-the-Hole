@@ -1,9 +1,7 @@
 import os
-import threading
-from datetime import datetime
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.button import MDRaisedButton, MDIconButton, MDFlatButton
+from kivymd.uix.button import MDRaisedButton, MDFlatButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.scrollview import MDScrollView
@@ -13,7 +11,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.image import Image
 from kivy.clock import Clock
 from kivy.metrics import dp
-from kivy.graphics import Color, RoundedRectangle
+from kivy.graphics import Color
 
 from audio_vault_dialogs import (
     show_add_audio_dialog,

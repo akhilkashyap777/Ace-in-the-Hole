@@ -1,5 +1,3 @@
-import os
-from datetime import datetime
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.button import MDRaisedButton, MDFlatButton
@@ -7,7 +5,6 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.card import MDCard
 from kivy.uix.popup import Popup
-from kivy.uix.textinput import TextInput
 from kivy.clock import Clock
 from kivy.metrics import dp
 from document_vault_ui_components import DocumentComponents
@@ -411,7 +408,3 @@ def integrate_document_vault(vault_app):
     vault_app.show_document_vault = show_document_vault
     
     return vault_app.document_vault
-
-print("Document Vault UI loaded successfully")
-print("Features: View-only, category filtering, text preview, export")
-print("Cross-platform compatible UI components")
