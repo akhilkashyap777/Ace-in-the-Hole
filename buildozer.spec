@@ -210,7 +210,7 @@ android.allow_backup = True
 #android.copy_libs = 1
 
 # (str) The Android bootstrap to use. Run 'buildozer android list_bootstraps' to get a list.
-android.bootstrap = sdl2_gradle
+android.bootstrap = sdl2
 
 # (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
 #p4a.port =
