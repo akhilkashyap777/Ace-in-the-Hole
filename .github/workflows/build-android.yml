@@ -1,0 +1,52 @@
+name: Build Monte Card Android APK
+
+on:
+  push:
+    branches: [ imports-removed ]
+  pull_request:
+    branches: [ imports-removed ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config \
+          zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev \
+          libssl-dev automake openjdk-17-jdk libltdl-dev
+          
+    - name: Install Python dependencies
+      run: |
+        pip install --user --upgrade pip
+        pip install --user --upgrade Cython==0.29.33 virtualenv
+        pip install --user --upgrade buildozer==1.5.0
+        
+    - name: Set up Java environment
+      run: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        echo "PATH=$PATH:~/.local/bin/" >> $GITHUB_ENV
+        
+    - name: Build Android APK
+      run: |
+        export PATH=$PATH:~/.local/bin/
+        yes | buildozer android debug
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: MonteCard-Android-APK-${{ github.sha }}
+        path: bin/*.apk
+        retention-days: 30
