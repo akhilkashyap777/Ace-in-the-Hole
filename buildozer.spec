@@ -52,13 +52,9 @@ android.bootstrap = sdl2
 
 # Android 13+ compatibility settings
 android.enable_androidx = True
-android.manifest_placeholders = {'requestLegacyExternalStorage': 'true'}
 
 # Additional permissions for internal storage access
 android.add_permissions = android.permission.WRITE_INTERNAL_STORAGE
-
-# Gradle dependencies for modern Android compatibility
-android.gradle_dependencies = androidx.core:core:1.7.0
 
 # change the major version of python used by the app
 osx.python_version = 3
