@@ -14,6 +14,9 @@ source.dir = .
 # (list) Source code where the main.py live
 source.include_exts = py,png,jpg,kv,atlas,wav,mp3
 
+# (list) Source code patterns to include
+source.include_patterns = *.py,secure_storage.py,assets/*,*.kv
+
 # (str) Application versioning (method 1)
 version = 0.1
 
@@ -27,7 +30,7 @@ orientation = portrait
 fullscreen = 0
 
 # (list) Permissions - Added critical storage permissions for Kivy
-android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,CAMERA,RECORD_AUDIO,WRITE_INTERNAL_STORAGE,MANAGE_EXTERNAL_STORAGE
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,CAMERA,RECORD_AUDIO
 
 # (int) Target Android API, should be as high as possible.
 android.api = 33
@@ -49,12 +52,6 @@ android.allow_backup = True
 
 # (str) The Android bootstrap to use.
 android.bootstrap = sdl2
-
-# Android 13+ compatibility settings
-android.enable_androidx = True
-
-# Additional permissions for internal storage access
-android.add_permissions = android.permission.WRITE_INTERNAL_STORAGE
 
 # change the major version of python used by the app
 osx.python_version = 3
