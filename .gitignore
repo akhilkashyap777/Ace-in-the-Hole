@@ -3,7 +3,6 @@ build/
 dist/
 debug_build/
 main.dist/
-*.spec
 
 # Large files and executables
 *.exe
@@ -47,4 +46,8 @@ bin/
 venv/
 env/
 .venv/
-"AceVault-Linux.sh" 
+"AceVault-Linux.sh"
+
+# Specific spec files to ignore (but NOT buildozer.spec)
+# Add any other .spec files you want to ignore here, like:
+# some-other-file.spec
