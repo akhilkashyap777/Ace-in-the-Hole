@@ -46,9 +46,9 @@ jobs:
         
         # Accept licenses and install required packages
         yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
-        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0"
         
-        # Download and setup NDK
+        # Download and setup NDK (matching buildozer.spec android.ndk = 25b)
         $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
         echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
         
