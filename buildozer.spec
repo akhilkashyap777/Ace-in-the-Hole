@@ -7,7 +7,7 @@ source.main = main.py
 # Explicitly include all supported source types
 source.include_exts = py,pyc,pyo,png,jpg,jpeg,gif,bmp,webp,tiff,kv,atlas,wav,mp3,mp4,avi,mov,mkv,txt,json
 source.include_patterns = .py,.kv,.json,assets/
-# FIXED: Added Python stdlib test exclusions to prevent Unicode errors
+# FIXED: Added Python stdlib test exclusions to prevent Unicode errors 
 source.exclude_patterns = spec/*,__pycache__/*,.git*,.github/*
 # Requirements: keep your versions as they are
 requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython
