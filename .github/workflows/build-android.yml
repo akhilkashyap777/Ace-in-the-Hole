@@ -32,11 +32,12 @@ jobs:
           zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev \
           libssl-dev automake libltdl-dev
           
-    - name: 📦 Install Python dependencies
+    - name: 📦 Install Python dependencies (Including p4a)
       run: |
         pip install --user --upgrade pip
         pip install --user --upgrade Cython==0.29.33 virtualenv
         pip install --user --upgrade buildozer==1.5.0
+        pip install --user --upgrade python-for-android==2024.4.23
         
     - name: 🤖 Setup Android SDK manually
       run: |
@@ -71,6 +72,11 @@ jobs:
         find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL not found yet"
         ls -la $ANDROID_SDK_ROOT/build-tools/33.0.0/ || echo "Build tools directory not found"
         
+    - name: 🧹 Remove old buildozer cache
+      run: |
+        rm -rf .buildozer
+        rm -rf bin
+        
     - name: 📋 Show project files and environment
       run: |
         echo "📄 Python files in project:"
@@ -84,12 +90,19 @@ jobs:
         echo "📄 buildozer.spec content:"
         cat buildozer.spec
         
-    - name: 🏗️ Build Android APK
+    - name: 🏗️ Initialize Buildozer
       run: |
         export PATH=$PATH:~/.local/bin/
         
-        # Clean any previous builds
-        buildozer android clean
+        # Initialize buildozer with proper environment
+        buildozer init || echo "Already initialized"
+        
+        # Show buildozer info
+        buildozer --version
+        
+    - name: 🏗️ Build Android APK
+      run: |
+        export PATH=$PATH:~/.local/bin/
         
         # Build with verbose output
         buildozer android debug -v
