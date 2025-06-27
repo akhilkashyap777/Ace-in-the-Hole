@@ -19,24 +19,30 @@ jobs:
       with:
         python-version: '3.10'
         
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: 🤖 Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        cmdline-tools-version: 8512546
+        packages: 'build-tools;33.0.0 platforms;android-33 platform-tools'
+        
     - name: 🔧 Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config \
           zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev \
-          libssl-dev automake openjdk-17-jdk libltdl-dev
+          libssl-dev automake libltdl-dev
           
     - name: 📦 Install Python dependencies
       run: |
         pip install --user --upgrade pip
         pip install --user --upgrade Cython==0.29.33 virtualenv
         pip install --user --upgrade buildozer==1.5.0
-        
-    - name: ☕ Set up Java and Android environment
-      run: |
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-        echo "PATH=$PATH:~/.local/bin/" >> $GITHUB_ENV
         
     - name: 📋 Show project files
       run: |
@@ -46,45 +52,11 @@ jobs:
         echo "📄 buildozer.spec content:"
         cat buildozer.spec
         
-    - name: 🏗️ Initialize Buildozer (Download Android SDK)
-      run: |
-        export PATH=$PATH:~/.local/bin/
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        # This will download Android SDK but might fail at build - that's OK
-        buildozer android debug || true
-        
-    - name: 🔧 Install Android Build Tools and Accept Licenses
-      run: |
-        export ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
-        
-        # Accept all licenses first
-        yes | sdkmanager --licenses || true
-        
-        # Install required build-tools version (matching your buildozer.spec)
-        yes | sdkmanager --install "build-tools;33.0.0" || true
-        yes | sdkmanager --install "platforms;android-33" || true
-        yes | sdkmanager --install "platform-tools" || true
-        
-        # Verify installation
-        echo "📋 Installed Android packages:"
-        sdkmanager --list_installed || true
-        
-        # Check if AIDL is now available
-        find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL still not found"
-        
     - name: 🏗️ Build Android APK
       run: |
         export PATH=$PATH:~/.local/bin/
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        export ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
-        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
-        
-        # Clean build to ensure fresh compilation
+        # Clean any previous builds
         buildozer android clean
-        
         # Build with verbose output
         buildozer android debug -v
         
