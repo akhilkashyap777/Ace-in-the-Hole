@@ -1,4 +1,4 @@
-# .github/workflows/build-android.yml 
+# .github/workflows/build-android.yml
 name: 🤖 Build Android APK
 
 on:
@@ -23,7 +23,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-        cache: 'pip'
         
     - name: ☕ Set up Java JDK 17
       uses: actions/setup-java@v4
@@ -132,16 +131,6 @@ jobs:
         name: monte-card-app-${{ github.run_number }}
         path: bin/*.apk
         retention-days: 30
-        
-    - name: 📤 Upload build logs on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-logs-${{ github.run_number }}
-        path: |
-          .buildozer/android/platform/build-*/logs/
-          .buildozer/*.log
-        retention-days: 7
         
     - name: 📊 Build summary
       if: always()
