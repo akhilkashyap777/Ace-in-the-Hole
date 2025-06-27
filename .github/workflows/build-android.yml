@@ -25,12 +25,6 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         
-    - name: 🤖 Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        cmdline-tools-version: 8512546
-        packages: 'build-tools;33.0.0 platforms;android-33 platform-tools'
-        
     - name: 🔧 Install system dependencies
       run: |
         sudo apt update
@@ -44,10 +38,48 @@ jobs:
         pip install --user --upgrade Cython==0.29.33 virtualenv
         pip install --user --upgrade buildozer==1.5.0
         
-    - name: 📋 Show project files
+    - name: 🤖 Setup Android SDK manually
+      run: |
+        # Set environment variables
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        export ANDROID_HOME=$HOME/android-sdk
+        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+        echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools" >> $GITHUB_ENV
+        
+        # Create SDK directory
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        
+        # Download and install command line tools
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
+        unzip -q cmdline-tools.zip -d cmdline-tools-temp
+        mv cmdline-tools-temp/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        rm -rf cmdline-tools.zip cmdline-tools-temp
+        
+        # Make sdkmanager executable
+        chmod +x $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+        
+        # Accept licenses and install packages
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools"
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-33"
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.0"
+        
+        # Verify AIDL is installed
+        echo "🔍 Checking for AIDL..."
+        find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL not found yet"
+        ls -la $ANDROID_SDK_ROOT/build-tools/33.0.0/ || echo "Build tools directory not found"
+        
+    - name: 📋 Show project files and environment
       run: |
         echo "📄 Python files in project:"
         ls -la *.py
+        echo ""
+        echo "🔧 Environment variables:"
+        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "JAVA_HOME: $JAVA_HOME"
         echo ""
         echo "📄 buildozer.spec content:"
         cat buildozer.spec
@@ -55,8 +87,10 @@ jobs:
     - name: 🏗️ Build Android APK
       run: |
         export PATH=$PATH:~/.local/bin/
+        
         # Clean any previous builds
         buildozer android clean
+        
         # Build with verbose output
         buildozer android debug -v
         
