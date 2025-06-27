@@ -32,7 +32,6 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,CAME
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
-android.sdk = 33
 android.archs = arm64-v8a,armeabi-v7a
 android.allow_backup = True
 
