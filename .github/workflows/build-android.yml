@@ -92,9 +92,11 @@ jobs:
         buildozer --version
 
     - name: 🏗️ Build Android APK
+      env:
+        CYTHONIZE_OPTIONS: "language_level=3"
       run: |
         export PATH=$PATH:~/.local/bin/
-        buildozer android debug -v
+        buildozer android debug
 
     - name: 📋 Verify APK contents
       run: |
