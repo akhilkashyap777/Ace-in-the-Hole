@@ -305,7 +305,7 @@ class VaultApp(MDApp):
     
     def _init_secure_storage(self):
         """Lazy initialization of secure storage"""
-        from secure_storage import SecureStorage
+        from modules.secure_storage import SecureStorage
         self.secure_storage = SecureStorage("SecretVault")
     
     def initialize_vault_modules(self):
