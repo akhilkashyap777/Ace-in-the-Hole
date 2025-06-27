@@ -1,5 +1,4 @@
 name: 🤖 Build Android APK
-
 on:
   push:
     branches: [ main, master, imports-removed ]
@@ -33,11 +32,14 @@ jobs:
         pip install --user --upgrade Cython==0.29.33 virtualenv
         pip install --user --upgrade buildozer==1.5.0
         
-    - name: ☕ Set up Java environment
+    - name: ☕ Set up Java and Android environment
       run: |
         export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
         echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
         echo "PATH=$PATH:~/.local/bin/" >> $GITHUB_ENV
+        # Accept Android SDK licenses properly
+        echo "ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk" >> $GITHUB_ENV
         
     - name: 📋 Show project files
       run: |
@@ -47,15 +49,36 @@ jobs:
         echo "📄 buildozer.spec content:"
         cat buildozer.spec
         
+    - name: 🔑 Accept Android SDK licenses
+      run: |
+        export PATH=$PATH:~/.local/bin/
+        # Initialize buildozer to create SDK structure
+        buildozer android debug || true
+        # Now accept licenses properly
+        if [ -d "$HOME/.buildozer/android/platform/android-sdk" ]; then
+          yes | $HOME/.buildozer/android/platform/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        fi
+        
     - name: 🏗️ Build Android APK
       run: |
         export PATH=$PATH:~/.local/bin/
-        yes | buildozer android debug
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        export ANDROID_SDK_ROOT=$HOME/.buildozer/android/platform/android-sdk
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        # Clean build to ensure fresh compilation
+        buildozer android clean
+        # Build with verbose output
+        buildozer android debug -v
         
-    - name: 📱 List generated files
+    - name: 📋 Verify APK contents
       run: |
         echo "📦 Generated APK files:"
         find . -name "*.apk" -type f -exec ls -lh {} \;
+        echo ""
+        echo "📄 Checking Python files in APK:"
+        if [ -f bin/*.apk ]; then
+          unzip -l bin/*.apk | grep -E "\.(py|pyc)$" | head -20 || echo "No Python files found in APK!"
+        fi
         
     - name: 📤 Upload APK
       uses: actions/upload-artifact@v4
