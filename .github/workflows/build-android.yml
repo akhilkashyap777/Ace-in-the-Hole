@@ -1,11 +1,12 @@
-name: Build Monte Card Android APK
+# .github/workflows/build-android.yml
+name: Build Android APK
 
 on:
   push:
-    branches: [ imports-removed ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ imports-removed ]
-  workflow_dispatch:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   build-android:
@@ -18,35 +19,97 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.9'
         
+    - name: Set up Java JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
     - name: Install system dependencies
       run: |
-        sudo apt update
-        sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config \
-          zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev \
-          libssl-dev automake openjdk-17-jdk libltdl-dev
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          git \
+          python3 \
+          python3-dev \
+          python3-pip \
+          python3-venv \
+          libffi-dev \
+          libssl-dev \
+          libjpeg-dev \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libtinfo5 \
+          cmake \
+          libffi-dev \
+          libssl-dev \
+          zip \
+          unzip \
+          openjdk-17-jdk \
+          autoconf \
+          libtool \
+          pkg-config \
+          libz-dev
           
     - name: Install Python dependencies
       run: |
-        pip install --user --upgrade pip
-        pip install --user --upgrade Cython==0.29.33 virtualenv
-        pip install --user --upgrade buildozer==1.5.0
+        python -m pip install --upgrade pip
+        pip install buildozer cython==0.29.33
         
-    - name: Set up Java environment
-      run: |
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-        echo "PATH=$PATH:~/.local/bin/" >> $GITHUB_ENV
-        
-    - name: Build Android APK
-      run: |
-        export PATH=$PATH:~/.local/bin/
-        yes | buildozer android debug
-        
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
+    - name: Cache Buildozer global directory
+      uses: actions/cache@v3
       with:
-        name: MonteCard-Android-APK-${{ github.sha }}
+        path: .buildozer_global
+        key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          buildozer-global-
+          
+    - name: Cache Buildozer dependencies
+      uses: actions/cache@v3
+      with:
+        path: .buildozer
+        key: buildozer-${{ hashFiles('buildozer.spec') }}
+        restore-keys: |
+          buildozer-
+          
+    - name: Make buildozer directory
+      run: |
+        mkdir -p $HOME/.buildozer
+        
+    - name: Build with Buildozer
+      env:
+        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        ANDROID_HOME: ${{ env.ANDROID_HOME }}
+      run: |
+        # Grant execute permission for buildozer
+        chmod +x $(which buildozer)
+        
+        # Show buildozer version
+        buildozer --version
+        
+        # Build the APK
+        buildozer android debug
+        
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: monte-card-app-debug
         path: bin/*.apk
         retention-days: 30
+        
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-logs
+        path: |
+          .buildozer/android/platform/build-*/logs/
+          .buildozer/android/logs/
+        retention-days: 7
