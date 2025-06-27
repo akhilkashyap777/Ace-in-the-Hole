@@ -3,10 +3,10 @@ name: 🤖 Build Android APK
 
 on:
   push:
-    branches: [ main, master, imports-removed ]  # Include your current branch
+    branches: [ main, master, imports-removed ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Manual trigger - works on any branch
+  workflow_dispatch:
 
 jobs:
   build-android:
@@ -31,11 +31,27 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
         
-    - name: 📱 Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        api-level: 33
-        ndk-version: '25.2.9519653'
+    - name: 📱 Setup Android SDK manually
+      run: |
+        # Download and setup Android SDK
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip -q commandlinetools-linux-9477386_latest.zip
+        mkdir -p $HOME/android-sdk/cmdline-tools
+        mv cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+        
+        # Set environment variables
+        echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+        
+        # Accept licenses and install required packages
+        yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        
+        # Download and setup NDK
+        $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
+        echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
         
     - name: 🔧 Install system dependencies
       run: |
@@ -57,8 +73,7 @@ jobs:
           autoconf \
           libtool \
           pkg-config \
-          libz-dev \
-          ccache
+          libz-dev
           
     - name: 📦 Install Python build tools
       run: |
@@ -70,27 +85,20 @@ jobs:
         mkdir -p $HOME/.buildozer
         mkdir -p .buildozer
         
-    - name: 💾 Cache buildozer global
+    - name: 💾 Cache buildozer dependencies
       uses: actions/cache@v3
       with:
-        path: .buildozer_global
-        key: buildozer-global-v2-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+        path: |
+          .buildozer
+          .buildozer_global
+        key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec', '**/*.py') }}
         restore-keys: |
-          buildozer-global-v2-${{ runner.os }}-
+          buildozer-${{ runner.os }}-
           
-    - name: 💾 Cache buildozer build
-      uses: actions/cache@v3
-      with:
-        path: .buildozer
-        key: buildozer-build-v2-${{ runner.os }}-${{ hashFiles('buildozer.spec', '**/*.py') }}
-        restore-keys: |
-          buildozer-build-v2-${{ runner.os }}-
-          
-    - name: 📋 Verify buildozer.spec exists
+    - name: 📋 Create buildozer.spec if missing
       run: |
         if [ ! -f buildozer.spec ]; then
-          echo "❌ buildozer.spec not found!"
-          echo "Creating minimal buildozer.spec..."
+          echo "Creating buildozer.spec..."
           cat > buildozer.spec << 'EOF'
         [app]
         title = Monte Card App
@@ -119,106 +127,69 @@ jobs:
         EOF
         fi
         
-    - name: 📋 Show buildozer.spec content
+    - name: 📋 Show project info
       run: |
         echo "📄 buildozer.spec content:"
         cat buildozer.spec
-        
-    - name: 📋 List Python files
-      run: |
+        echo ""
         echo "🐍 Python files in project:"
-        find . -name "*.py" -type f | head -20
+        find . -name "*.py" -type f | head -10
         
-    - name: 🔍 Buildozer version check
+    - name: 🔍 Environment check
       run: |
         buildozer --version
         echo "Android SDK: $ANDROID_SDK_ROOT"
         echo "Android NDK: $ANDROID_NDK_ROOT"
+        java -version
+        python --version
         
     - name: 🧹 Clean previous builds
       run: |
         buildozer android clean || true
         
     - name: 🏗️ Build Android APK
-      env:
-        ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-        ANDROID_HOME: ${{ env.ANDROID_HOME }}
-        ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT }}
-        P4A_BOOTSTRAP: sdl2
       run: |
         echo "🚀 Starting APK build..."
-        
-        # Set permissions
-        chmod +x $(which buildozer)
-        
-        # Run buildozer with debug info
         buildozer -v android debug
         
-    - name: 📱 List generated APK files
+    - name: 📱 List generated files
       run: |
-        echo "📦 Generated files in bin/:"
-        ls -la bin/ || echo "No bin directory found"
-        find . -name "*.apk" -type f || echo "No APK files found"
+        echo "📦 Generated files:"
+        find . -name "*.apk" -type f -exec ls -lh {} \;
         
     - name: 📤 Upload APK artifact
       if: success()
       uses: actions/upload-artifact@v3
       with:
         name: monte-card-app-${{ github.run_number }}
-        path: |
-          bin/*.apk
-          bin/*.aab
-        retention-days: 90
-        if-no-files-found: warn
+        path: bin/*.apk
+        retention-days: 30
         
-    - name: 📤 Upload build logs
-      if: always()
+    - name: 📤 Upload build logs on failure
+      if: failure()
       uses: actions/upload-artifact@v3
       with:
         name: build-logs-${{ github.run_number }}
         path: |
           .buildozer/android/platform/build-*/logs/
-          .buildozer/android/logs/
           .buildozer/*.log
-        retention-days: 30
-        if-no-files-found: ignore
+        retention-days: 7
         
     - name: 📊 Build summary
       if: always()
       run: |
         echo "## 📱 Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -f bin/*.apk ]; then
-          echo "✅ **APK Build Status**: SUCCESS" >> $GITHUB_STEP_SUMMARY
-          echo "📦 **APK Location**: \`bin/\`" >> $GITHUB_STEP_SUMMARY
-          echo "📱 **APK Size**: $(du -h bin/*.apk | cut -f1)" >> $GITHUB_STEP_SUMMARY
+        if find . -name "*.apk" -type f | grep -q .; then
+          APK_FILE=$(find . -name "*.apk" -type f | head -1)
+          APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
+          echo "✅ **APK Build**: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          echo "📦 **APK Size**: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
+          echo "📁 **APK Location**: \`bin/\`" >> $GITHUB_STEP_SUMMARY
         else
-          echo "❌ **APK Build Status**: FAILED" >> $GITHUB_STEP_SUMMARY
-          echo "📋 Check the build logs for details" >> $GITHUB_STEP_SUMMARY
+          echo "❌ **APK Build**: FAILED" >> $GITHUB_STEP_SUMMARY
+          echo "📋 Check build logs for details" >> $GITHUB_STEP_SUMMARY
         fi
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "🕒 **Build Time**: $(date)" >> $GITHUB_STEP_SUMMARY
-        echo "🔧 **Runner**: ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
         echo "🌿 **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-
-  release:
-    needs: build-android
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    
-    steps:
-    - name: 📥 Download APK artifact
-      uses: actions/download-artifact@v3
-      with:
-        name: monte-card-app-${{ github.run_number }}
-        path: ./apk
-        
-    - name: 🚀 Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: ./apk/*.apk
-        generate_release_notes: true
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
