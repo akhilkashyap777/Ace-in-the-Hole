@@ -9,6 +9,112 @@ from kivymd.uix.scrollview import MDScrollView
 from kivy.core.window import Window
 from kivy.config import Config
 
+# ============ DEBUG SECTION - ADD THIS TEMPORARILY ============
+import sys
+import os
+
+def debug_environment():
+    """Debug function to check environment and file availability"""
+    print("=" * 60)
+    print("🔍 DEBUG: Environment Check")
+    print("=" * 60)
+    
+    # Check Python path
+    print("📍 Python sys.path:")
+    for i, path in enumerate(sys.path):
+        print(f"  [{i}] {path}")
+    print()
+    
+    # Check current working directory
+    print(f"📂 Current working directory: {os.getcwd()}")
+    print()
+    
+    # List all files in current directory
+    print("📄 Files in current directory:")
+    try:
+        files = os.listdir('.')
+        python_files = [f for f in files if f.endswith('.py')]
+        other_files = [f for f in files if not f.endswith('.py')]
+        
+        print("  Python files:")
+        for f in sorted(python_files):
+            print(f"    ✓ {f}")
+        
+        print("  Other files:")
+        for f in sorted(other_files)[:10]:  # Show first 10 non-Python files
+            print(f"    - {f}")
+        if len(other_files) > 10:
+            print(f"    ... and {len(other_files) - 10} more files")
+            
+    except Exception as e:
+        print(f"  ❌ Error listing files: {e}")
+    print()
+    
+    # Check for specific files
+    target_files = ['secure_storage.py', 'main.py', 'buildozer.spec']
+    print("🎯 Checking for target files:")
+    for file in target_files:
+        exists = os.path.exists(file)
+        status = "✅" if exists else "❌"
+        print(f"  {status} {file}")
+        if exists:
+            try:
+                size = os.path.getsize(file)
+                print(f"      Size: {size} bytes")
+            except:
+                pass
+    print()
+    
+    # Check if we can import the module
+    print("🧪 Testing secure_storage import:")
+    try:
+        # Try different import methods
+        import secure_storage
+        print("  ✅ Direct import successful")
+        print(f"      Module file: {secure_storage.__file__ if hasattr(secure_storage, '__file__') else 'Unknown'}")
+        
+        # Check if SecureStorage class exists
+        if hasattr(secure_storage, 'SecureStorage'):
+            print("  ✅ SecureStorage class found")
+        else:
+            print("  ❌ SecureStorage class NOT found")
+            
+    except ImportError as e:
+        print(f"  ❌ Import failed: {e}")
+        
+        # Try alternative import methods
+        print("  🔄 Trying alternative imports...")
+        
+        # Try adding current directory to path
+        if '.' not in sys.path:
+            sys.path.insert(0, '.')
+            print("    Added '.' to sys.path")
+            
+        try:
+            import secure_storage
+            print("    ✅ Import successful after adding '.' to path")
+        except ImportError as e2:
+            print(f"    ❌ Still failed: {e2}")
+            
+            # Try importing from current directory explicitly
+            try:
+                sys.path.insert(0, os.getcwd())
+                import secure_storage
+                print("    ✅ Import successful after adding cwd to path")
+            except ImportError as e3:
+                print(f"    ❌ Final attempt failed: {e3}")
+    
+    except Exception as e:
+        print(f"  ❌ Unexpected error: {e}")
+    
+    print("=" * 60)
+    print("🔍 DEBUG: End of Environment Check")
+    print("=" * 60)
+
+# Call debug function immediately
+debug_environment()
+# ============ END DEBUG SECTION ============
+
 # Lazy imports - loaded only when needed
 def get_android_modules():
     try:
@@ -160,6 +266,7 @@ class VaultApp(MDApp):
         # Lazy load these modules
         self.password_manager = None
         self.password_ui = None
+        self.secure_storage = None  # Initialize as None
         
     def _init_password_system(self):
         """Lazy initialization of password system"""
