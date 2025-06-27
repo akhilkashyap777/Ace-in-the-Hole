@@ -113,7 +113,30 @@ def debug_environment():
 
 # Call debug function immediately
 debug_environment()
-# ============ END DEBUG SECTION ============
+
+# ============ CUSTOM PATH SOLUTION ============
+def add_custom_python_paths():
+    """Add custom paths to find Python modules"""
+    custom_paths = [
+        '/data/data/com.akhilkast.montecard/files/app',
+        '/data/user/0/com.akhilkast.montecard/files/app',
+        '/data/user/0/com.akhilkast.montecard/files/app/_python_bundle',
+        '/data/user/0/com.akhilkast.montecard/files/app/_python_bundle/modules',
+        '/data/data/com.akhilkast.montecard/files/app/_python_bundle',
+        '/data/data/com.akhilkast.montecard/files/app/_python_bundle/modules',
+        '/data/user/0/com.akhilkast.montecard/files/app/_python_bundle/site-packages',
+        '.',
+        './modules',
+        os.path.dirname(os.path.abspath(__file__)),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modules'),
+    ]
+    
+    for path in custom_paths:
+        if path not in sys.path:
+            sys.path.insert(0, path)
+
+add_custom_python_paths()
+# ============ END DEBUG AND CUSTOM PATH SECTION ============
 
 # Lazy imports - loaded only when needed
 def get_android_modules():
