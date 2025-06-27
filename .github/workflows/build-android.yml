@@ -34,7 +34,7 @@ jobs:
     - name: 📦 Install Python dependencies (Including p4a)
       run: |
         pip install --user --upgrade pip
-        pip install --user --upgrade Cython==0.29.33 virtualenv
+        pip install --user --upgrade Cython==0.29.36 virtualenv
         pip install --user --upgrade buildozer==1.5.0
         pip install --user --upgrade python-for-android==2021.9.5
 
