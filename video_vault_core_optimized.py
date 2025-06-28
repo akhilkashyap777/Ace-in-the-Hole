@@ -25,12 +25,16 @@ except ImportError:
     IMAGEIO_AVAILABLE = False
     print("ImageIO not available - video thumbnails will use basic method")
 
-if platform.system() == "Windows":
-    try:
-        import psutil
-        PSUTIL_AVAILABLE = True
-    except ImportError:
-        PSUTIL_AVAILABLE = False
+# FIX: Define PSUTIL_AVAILABLE for all platforms
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+    # Only enable advanced features on Windows where they're most useful
+    PSUTIL_ENABLED = platform.system() == "Windows"
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    PSUTIL_ENABLED = False
+    if platform.system() == "Windows":
         print("psutil not available - advanced file deletion disabled")
 
 class ResourceManager:
