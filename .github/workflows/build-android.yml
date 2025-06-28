@@ -1,9 +1,9 @@
 name: 🤖 Build Android APK
 on:
   push:
-    branches: [ main, master, imports-removed ]
+    branches: [ imports-removed ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ imports-removed ]
   workflow_dispatch:
 
 jobs:
