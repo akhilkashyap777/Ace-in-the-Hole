@@ -65,10 +65,16 @@ jobs:
         find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL not found yet"
         ls -la $ANDROID_SDK_ROOT/build-tools/33.0.0/ || echo "Build tools directory not found"
 
-    - name: 🧹 Remove old buildozer cache
+    - name: 🧹 COMPLETE buildozer cache clean
       run: |
         rm -rf .buildozer
         rm -rf bin
+        find . -name "*.pyc" -delete
+        find . -name "__pycache__" -delete
+        echo "🔍 Cleaning Python cache files..."
+        python -Bc "import compileall; compileall.compile_dir('.', force=True, quiet=1)"
+        find . -name "*.pyc" -delete
+        echo "✅ All Python cache cleared"
 
     - name: 📋 Show project files and environment
       run: |
@@ -89,11 +95,14 @@ jobs:
         buildozer init || echo "Already initialized"
         buildozer --version
 
-    - name: 🏗️ Build Android APK
+    - name: 🏗️ Build Android APK (CLEAN BUILD)
       env:
         CYTHONIZE_OPTIONS: "language_level=3"
       run: |
         export PATH=$PATH:~/.local/bin/
+        echo "🧹 Forcing clean build..."
+        buildozer android clean
+        echo "🏗️ Starting fresh build..."
         buildozer android debug
 
     - name: 📋 Verify APK contents
