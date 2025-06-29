@@ -29,12 +29,11 @@ jobs:
         sudo apt update
         sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev automake libltdl-dev
 
-    - name: 📦 Install Python dependencies (Including p4a)
+    - name: 📦 Install Python dependencies
       run: |
         pip install --user --upgrade pip
         pip install --user --upgrade Cython==0.29.36 virtualenv
         pip install --user --upgrade buildozer==1.5.0
-        pip install --user --upgrade python-for-android==2021.9.5
 
     - name: 🤖 Setup Android SDK manually
       run: |
@@ -71,9 +70,6 @@ jobs:
         rm -rf bin
         find . -name "*.pyc" -delete
         find . -name "__pycache__" -delete
-        echo "🔍 Cleaning Python cache files..."
-        python -Bc "import compileall; compileall.compile_dir('.', force=True, quiet=1)"
-        find . -name "*.pyc" -delete
         echo "✅ All Python cache cleared"
 
     - name: 📋 Show project files and environment
