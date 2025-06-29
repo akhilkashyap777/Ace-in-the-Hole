@@ -21,8 +21,17 @@ class MonteGame:
         self.WOOD_BROWN = (139, 69, 19)
         self.LIGHT_BROWN = (205, 133, 63)
         
-        # FIX: Add depth parameter (32-bit)
-        self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
+        # FIX: Try multiple Surface creation methods
+        try:
+            # Method 1: With explicit masks parameter
+            self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32, (0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF))
+        except TypeError:
+            try:
+                # Method 2: With depth only
+                self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
+            except TypeError:
+                # Method 3: Basic creation
+                self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
         
         # ✅ OPTIMIZATION: Pre-create and cache all fonts
@@ -226,8 +235,14 @@ class MonteGame:
     def _draw_background_cached(self):
         """✅ OPTIMIZATION: Draw and cache static background"""
         if self._background_cache is None or self._background_dirty:
-            # FIX: Add depth parameter (32-bit)
-            self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
+            # FIX: Try multiple Surface creation methods for background cache
+            try:
+                self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32, (0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF))
+            except TypeError:
+                try:
+                    self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
+                except TypeError:
+                    self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
             surface = self._background_cache
             
             surface.fill(self.FELT_GREEN)
@@ -339,8 +354,17 @@ class Card:
         
     def _render_faces(self):
         """✅ OPTIMIZATION: Pre-render all card faces"""
-        # FIX: Add depth parameter (32-bit) to all surfaces
-        winner_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
+        # FIX: Try multiple Surface creation methods for card faces
+        def create_surface():
+            try:
+                return pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32, (0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF))
+            except TypeError:
+                try:
+                    return pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
+                except TypeError:
+                    return pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT))
+        
+        winner_surface = create_surface()
         winner_surface.fill(self.game.RED)
         pygame.draw.rect(winner_surface, self.game.BLACK, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
         
@@ -349,8 +373,7 @@ class Card:
         winner_surface.blit(ace_text, ace_rect)
         self._face_cache['winner'] = winner_surface
         
-        # FIX: Add depth parameter (32-bit)
-        loser_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
+        loser_surface = create_surface()
         loser_surface.fill(self.game.BLACK)
         pygame.draw.rect(loser_surface, self.game.WHITE, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
         
@@ -359,8 +382,7 @@ class Card:
         loser_surface.blit(two_text, two_rect)
         self._face_cache['loser'] = loser_surface
         
-        # FIX: Add depth parameter (32-bit)
-        back_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
+        back_surface = create_surface()
         back_surface.fill(self.game.BLUE)
         pygame.draw.rect(back_surface, self.game.BLACK, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
         
