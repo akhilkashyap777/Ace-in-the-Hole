@@ -38,6 +38,17 @@ jobs:
         pip install --user --upgrade buildozer==1.5.0
         pip install --user --upgrade python-for-android==2021.9.5
 
+    # --- MODIFY THIS STEP ---
+    - name: 🧹 Clean and update Buildozer cache and recipes
+      run: |
+        # More aggressive clean of Buildozer's entire working directory
+        ~/.local/bin/buildozer clean --dist-dir
+        # Ensure Buildozer's internal recipes (including pygame's) are up-to-date
+        ~/.local/bin/buildozer selfupdate
+        # Keep clearing the 'bin' directory for fresh APK output
+        rm -rf bin
+    # --- END MODIFICATION ---
+
     - name: 🤖 Setup Android SDK manually
       run: |
         # Set environment variables
@@ -66,11 +77,6 @@ jobs:
         echo "🔍 Checking for AIDL..."
         find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL not found yet"
         ls -la $ANDROID_SDK_ROOT/build-tools/33.0.0/ || echo "Build tools directory not found"
-
-    - name: 🧹 Remove old buildozer cache
-      run: |
-        rm -rf .buildozer
-        rm -rf bin
 
     - name: 📋 Show project files and environment
       run: |
