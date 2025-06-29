@@ -96,9 +96,7 @@ jobs:
         CYTHONIZE_OPTIONS: "language_level=3"
       run: |
         export PATH=$PATH:~/.local/bin/
-        echo "🧹 Forcing clean build..."
-        buildozer android clean
-        echo "🏗️ Starting fresh build..."
+        echo "🏗️ Starting clean build (buildozer will handle python-for-android)..."
         buildozer android debug
 
     - name: 📋 Verify APK contents
