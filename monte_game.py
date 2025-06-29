@@ -21,8 +21,8 @@ class MonteGame:
         self.WOOD_BROWN = (139, 69, 19)
         self.LIGHT_BROWN = (205, 133, 63)
         
-        # FIX: Use correct pygame Surface syntax
-        self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
+        # FIX: Add depth parameter (32-bit)
+        self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
         self.clock = pygame.time.Clock()
         
         # ✅ OPTIMIZATION: Pre-create and cache all fonts
@@ -226,8 +226,8 @@ class MonteGame:
     def _draw_background_cached(self):
         """✅ OPTIMIZATION: Draw and cache static background"""
         if self._background_cache is None or self._background_dirty:
-            # Create background surface - FIX: Use correct syntax here too
-            self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA)
+            # FIX: Add depth parameter (32-bit)
+            self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
             surface = self._background_cache
             
             surface.fill(self.FELT_GREEN)
@@ -339,8 +339,8 @@ class Card:
         
     def _render_faces(self):
         """✅ OPTIMIZATION: Pre-render all card faces"""
-        # Winner face (Red Ace) - FIX: Use correct syntax
-        winner_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA)
+        # FIX: Add depth parameter (32-bit) to all surfaces
+        winner_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
         winner_surface.fill(self.game.RED)
         pygame.draw.rect(winner_surface, self.game.BLACK, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
         
@@ -349,8 +349,8 @@ class Card:
         winner_surface.blit(ace_text, ace_rect)
         self._face_cache['winner'] = winner_surface
         
-        # Loser face (Black 2) - FIX: Use correct syntax
-        loser_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA)
+        # FIX: Add depth parameter (32-bit)
+        loser_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
         loser_surface.fill(self.game.BLACK)
         pygame.draw.rect(loser_surface, self.game.WHITE, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
         
@@ -359,8 +359,8 @@ class Card:
         loser_surface.blit(two_text, two_rect)
         self._face_cache['loser'] = loser_surface
         
-        # Back face - FIX: Use correct syntax
-        back_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA)
+        # FIX: Add depth parameter (32-bit)
+        back_surface = pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
         back_surface.fill(self.game.BLUE)
         pygame.draw.rect(back_surface, self.game.BLACK, (0, 0, self.game.CARD_WIDTH, self.game.CARD_HEIGHT), 3)
         
