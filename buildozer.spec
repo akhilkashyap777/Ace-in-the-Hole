@@ -9,7 +9,7 @@ source.include_exts = py,pyc,pyo,png,jpg,jpeg,gif,bmp,webp,tiff,kv,atlas,wav,mp3
 # FIXED: Added Python stdlib test exclusions to prevent Unicode errors
 source.exclude_patterns = spec/*,__pycache__/*,.git*,.github/*
 # Requirements: keep your versions as they are
-requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil,pygame==2.5.2
+requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil,pygame==2.1.3
 version = 0.1
 orientation = portrait
 fullscreen = 0
@@ -19,7 +19,7 @@ android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,CAME
 android.api = 33
 android.minapi = 21
 android.ndk = 25b
-android.archs = arm64-v8a,armeabi-v7a
+android.archs = arm64-v8a
 android.allow_backup = True
 p4a.bootstrap = sdl2
 [buildozer]
