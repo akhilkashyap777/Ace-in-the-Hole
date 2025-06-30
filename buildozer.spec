@@ -9,8 +9,9 @@ source.include_exts = py,pyc,pyo,png,jpg,jpeg,gif,bmp,webp,tiff,kv,atlas,wav,mp3
 # FIXED: Added Python stdlib test exclusions to prevent Unicode errors
 source.exclude_patterns = spec/*,__pycache__/*,.git*,.github/*
 # Requirements: FIXED FOR PYGAME ANDROID BUILD
-requirements = python3==3.10.12,kivy==2.3.0,hostpython3==3.10.12,pyjnius==1.5.0,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil,pygame
+requirements = python3==3.10.12,kivy==2.3.0,hostpython3==3.10.12,pyjnius==1.5.0,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil,pygame_sdl2
 version = 0.1
+
 orientation = portrait
 fullscreen = 0
 android.accept_sdk_license = True
