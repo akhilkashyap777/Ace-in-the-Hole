@@ -24,7 +24,7 @@ class MonteGame:
         # FIX: Try multiple Surface creation methods
         try:
             # Method 1: With explicit masks parameter
-            self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32, (0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF))
+            self.screen = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32, masks=None)
         except TypeError:
             try:
                 # Method 2: With depth only
@@ -237,7 +237,7 @@ class MonteGame:
         if self._background_cache is None or self._background_dirty:
             # FIX: Try multiple Surface creation methods for background cache
             try:
-                self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32, (0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF))
+                self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32, masks=None)
             except TypeError:
                 try:
                     self._background_cache = pygame.Surface((self.SCREEN_WIDTH, self.SCREEN_HEIGHT), pygame.SRCALPHA, 32)
@@ -357,7 +357,7 @@ class Card:
         # FIX: Try multiple Surface creation methods for card faces
         def create_surface():
             try:
-                return pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32, (0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF))
+                return pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32, masks=None)
             except TypeError:
                 try:
                     return pygame.Surface((self.game.CARD_WIDTH, self.game.CARD_HEIGHT), pygame.SRCALPHA, 32)
