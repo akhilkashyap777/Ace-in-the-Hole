@@ -58,7 +58,8 @@ jobs:
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools"
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-33"
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.0"
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;23.1.7779620"
+        # FIXED: Changed NDK version from 23.1.7779620 (r23b) to 25.1.8937393 (r25b)
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
         # Verify AIDL is installed
         echo "🔍 Checking for AIDL..."
         find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL not found yet"
