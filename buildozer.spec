@@ -9,7 +9,7 @@ source.include_exts = py,pyc,pyo,png,jpg,jpeg,gif,bmp,webp,tiff,kv,atlas,wav,mp3
 # FIXED: Added Python stdlib test exclusions to prevent Unicode errors
 source.exclude_patterns = spec/,pycache/,.git,.github/
 # Requirements: keep your versions as they are
-requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil,pygame==2.1.3
+requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil,pygame==2.1.3,sdl2,sdl2_image,sdl2_mixer,sdl2_ttf
 version = 0.1
 orientation = portrait
 fullscreen = 0
