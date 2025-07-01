@@ -22,6 +22,10 @@ android.ndk = 25b
 android.archs = arm64-v8a
 android.allow_backup = True
 p4a.bootstrap = sdl2
+# NEW: This is the crucial line to address the SSE2 symbol error.
+# It tells Pygame's build process to use SDL2's generic alpha blending.
+p4a.env_vars = PYGAME_BLEND_ALPHA_SDL2=1
+
 [buildozer]
 log_level = 2
 warn_on_root = 1
