@@ -27,5 +27,5 @@ p4a.bootstrap = sdl2
 p4a.env_vars = PYGAME_BLEND_ALPHA_SDL2=1
 
 [buildozer]
-log_level = 2
+log_level = 5
 warn_on_root = 1
