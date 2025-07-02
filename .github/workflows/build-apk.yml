@@ -35,14 +35,7 @@ jobs:
     - name: Create app icon
       run: |
         mkdir -p data
-        python3 -c "
-from PIL import Image, ImageDraw
-img = Image.new('RGB', (512, 512), (33, 150, 243))
-draw = ImageDraw.Draw(img)
-draw.rectangle([100, 100, 412, 412], fill=(255, 255, 255))
-img.save('data/icon.png')
-print('Icon created successfully')
-"
+        python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (512, 512), (33, 150, 243)); draw = ImageDraw.Draw(img); draw.rectangle([100, 100, 412, 412], fill=(255, 255, 255)); img.save('data/icon.png'); print('Icon created')"
         
     - name: Initialize buildozer
       run: |
