@@ -6,8 +6,8 @@ source.dir = .
 source.main = main.py
 source.include_exts = py,pyc,pyo,png,jpg,jpeg,gif,bmp,webp,tiff,kv,atlas,wav,mp3,mp4,avi,mov,mkv,txt,json
 source.exclude_patterns = spec/,pycache/,.git,.github/
-# REMOVED: pygame and related SDL2 requirements since you're using WebView
-requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython
+# WebView requirements for HTML/CSS/JavaScript support
+requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,pyjnius
 version = 0.1
 orientation = portrait
 fullscreen = 0
@@ -22,8 +22,8 @@ android.ndk = 25b
 android.archs = arm64-v8a
 android.allow_backup = True
 
-# CHANGED: Using webview bootstrap since you're not using pygame
-p4a.bootstrap = webview
+# CORRECTED: Using SDL2 bootstrap for Kivy/KivyMD apps
+p4a.bootstrap = sdl2
 
 [buildozer]
 log_level = 5
