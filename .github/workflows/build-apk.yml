@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-apk:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout
@@ -21,7 +21,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y openjdk-11-jdk build-essential git unzip zip
+        sudo apt-get install -y openjdk-17-jdk build-essential git unzip zip
         
     - name: Install Python packages
       run: |
@@ -30,16 +30,12 @@ jobs:
         
     - name: Set Java environment
       run: |
-        echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
         
     - name: Create app icon
       run: |
         mkdir -p data
         python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (512, 512), (33, 150, 243)); draw = ImageDraw.Draw(img); draw.rectangle([100, 100, 412, 412], fill=(255, 255, 255)); img.save('data/icon.png'); print('Icon created')"
-        
-    - name: Initialize buildozer
-      run: |
-        buildozer init || echo "Buildozer spec already exists"
         
     - name: Build APK
       run: |
