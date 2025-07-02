@@ -1,0 +1,118 @@
+name: 🤖 Build Android APK
+on:
+  push:
+    branches: [ apk-testing ]
+  pull_request:
+    branches: [ apk-testing ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: ☕ Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: 🔧 Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev automake libltdl-dev
+
+    - name: 📦 Install Python dependencies
+      run: |
+        pip install --user --upgrade pip
+        pip install --user --upgrade Cython==0.29.36 virtualenv
+        pip install --user --upgrade buildozer==1.5.0
+
+    - name: 🤖 Setup Android SDK manually
+      run: |
+        # Set environment variables
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        export ANDROID_HOME=$HOME/android-sdk
+        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+        echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools" >> $GITHUB_ENV
+        # Create SDK directory
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        # Download and install command line tools
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O cmdline-tools.zip
+        unzip -q cmdline-tools.zip -d cmdline-tools-temp
+        mv cmdline-tools-temp/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        rm -rf cmdline-tools.zip cmdline-tools-temp
+        # Make sdkmanager executable
+        chmod +x $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+        # Accept licenses and install packages
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platform-tools"
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "platforms;android-33"
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.0"
+        # FIXED: Changed NDK version from 23.1.7779620 (r23b) to 25.1.8937393 (r25b)
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
+        # Verify AIDL is installed
+        echo "🔍 Checking for AIDL..."
+        find $ANDROID_SDK_ROOT -name "aidl" -type f || echo "AIDL not found yet"
+        ls -la $ANDROID_SDK_ROOT/build-tools/33.0.0/ || echo "Build tools directory not found"
+
+    - name: 🧹 COMPLETE buildozer cache clean
+      run: |
+        rm -rf .buildozer
+        rm -rf bin
+        find . -name "*.pyc" -delete
+        find . -name "__pycache__" -delete
+        echo "✅ All Python cache cleared"
+
+    - name: 📋 Show project files and environment
+      run: |
+        echo "📄 Python files in project:"
+        ls -la *.py
+        echo ""
+        echo "🔧 Environment variables:"
+        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "ANDROID_HOME: $ANDROID_HOME"
+        echo "JAVA_HOME: $JAVA_HOME"
+        echo ""
+        echo "📄 buildozer.spec content:"
+        cat buildozer.spec
+
+    - name: 🏗️ Initialize Buildozer
+      run: |
+        export PATH=$PATH:~/.local/bin/
+        buildozer init || echo "Already initialized"
+        buildozer --version
+
+    - name: 🏗️ Build Android APK (CLEAN BUILD)
+      env:
+        CYTHONIZE_OPTIONS: "language_level=3"
+      run: |
+        export PATH=$PATH:~/.local/bin/
+        echo "🏗️ Starting clean build (buildozer will handle python-for-android)..."
+        buildozer android debug
+
+    - name: 📋 Verify APK contents
+      run: |
+        echo "📦 Generated APK files:"
+        find . -name "*.apk" -type f -exec ls -lh {} \;
+        echo ""
+        echo "📄 Checking Python files in APK:"
+        if [ -f bin/*.apk ]; then
+          unzip -l bin/*.apk | grep -E "\.(py|pyc)$" | head -20 || echo "No Python files found in APK!"
+        fi
+
+    - name: 📤 Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: MonteCard-Android-APK-${{ github.sha }}
+        path: bin/*.apk
+        retention-days: 30
