@@ -48,7 +48,7 @@ jobs:
         find . -name "*.apk" -type f || echo "No APK found"
         
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success()
       with:
         name: monte-card-apk
