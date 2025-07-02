@@ -224,11 +224,11 @@ class VaultApp(MDApp):
     
     def create_game_widget(self):
         """Factory method to create game screen"""
-        from game_widget import GameWidget  # Lazy import
+        from web_game_widget import WebGameWidget  # Lazy import
         
         container = MDBoxLayout(orientation='vertical')
         
-        game_widget = GameWidget()
+        game_widget = WebGameWidget()
         container.add_widget(game_widget)
         
         button_layout = MDBoxLayout(
