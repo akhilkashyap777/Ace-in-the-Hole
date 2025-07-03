@@ -24,41 +24,105 @@ jobs:
 
     - name: Set up Android SDK manually
       run: |
+        set -e  # Exit on any error
+        
+        echo "=== Starting Android SDK Setup ==="
+        
         # Set SDK root path and export to GITHUB_ENV for subsequent steps
-        # This makes ANDROID_SDK_ROOT and ANDROID_HOME available globally
         echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
         echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
         export ANDROID_SDK_ROOT=$HOME/android-sdk
         export ANDROID_HOME=$HOME/android-sdk
+        
+        echo "SDK paths set: ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
 
         # Create necessary directories for SDK
-        mkdir -p $ANDROID_SDK_ROOT
-
-        # Download Android Command Line Tools (latest stable version recommended for sdkmanager)
-        # Using a known stable version to ensure sdkmanager is available.
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8583975_latest.zip -O cmdline-tools.zip
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
-        mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
-        rm cmdline-tools.zip
+        echo "Created directory: $ANDROID_SDK_ROOT/cmdline-tools"
 
-        # Add cmdline-tools to PATH temporarily for this step to use sdkmanager
+        # Download Android Command Line Tools
+        echo "=== Downloading Command Line Tools ==="
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8583975_latest.zip -O cmdline-tools.zip
+        
+        if [ ! -f cmdline-tools.zip ]; then
+            echo "ERROR: Failed to download cmdline-tools.zip"
+            exit 1
+        fi
+        
+        echo "Download completed. File size:"
+        ls -lh cmdline-tools.zip
+        
+        # Extract and verify structure
+        echo "=== Extracting Command Line Tools ==="
+        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+        
+        echo "Contents after extraction:"
+        ls -la $ANDROID_SDK_ROOT/cmdline-tools/
+        
+        # Check if cmdline-tools directory exists inside
+        if [ -d "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" ]; then
+            echo "Found cmdline-tools subdirectory, moving to latest..."
+            mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        else
+            echo "ERROR: cmdline-tools subdirectory not found after extraction"
+            echo "Available directories:"
+            find $ANDROID_SDK_ROOT/cmdline-tools -type d
+            exit 1
+        fi
+        
+        rm cmdline-tools.zip
+        
+        # Verify final structure
+        echo "=== Final directory structure ==="
+        echo "Contents of cmdline-tools/latest:"
+        ls -la $ANDROID_SDK_ROOT/cmdline-tools/latest/ || echo "latest directory not found"
+        
+        echo "Contents of cmdline-tools/latest/bin:"
+        ls -la $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/ || echo "bin directory not found"
+
+        # Add cmdline-tools to PATH for this step
         export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+        echo "PATH updated: $PATH"
+
+        # Verify sdkmanager is accessible
+        echo "=== Verifying sdkmanager ==="
+        which sdkmanager || echo "sdkmanager not found in PATH"
+        
+        if command -v sdkmanager >/dev/null 2>&1; then
+            echo "sdkmanager found, checking version..."
+            sdkmanager --version || echo "sdkmanager version check failed"
+        else
+            echo "ERROR: sdkmanager command not available"
+            echo "Searching for sdkmanager in SDK directory..."
+            find $ANDROID_SDK_ROOT -name "sdkmanager" -type f 2>/dev/null || echo "sdkmanager not found anywhere"
+            exit 1
+        fi
 
         # Install SDK components using sdkmanager
-        # 'yes |' is used to automatically accept licenses
-        yes | sdkmanager \
-          "platforms;android-33" \
-          "build-tools;33.0.0" \
-          "ndk;25.2.9519653" \
-          "cmake;3.18.1" \
-          "patcher;v4" # These components are often required by Buildozer or specific Android projects
+        echo "=== Installing SDK components ==="
+        echo "Installing platforms;android-33..."
+        yes | sdkmanager "platforms;android-33" || { echo "Failed to install platforms;android-33"; exit 1; }
         
-        # Accept all SDK licenses (crucial for CI)
-        yes | sdkmanager --licenses
+        echo "Installing build-tools;33.0.0..."
+        yes | sdkmanager "build-tools;33.0.0" || { echo "Failed to install build-tools;33.0.0"; exit 1; }
         
-        # Set NDK root for Buildozer compatibility, also add to GITHUB_ENV
+        echo "Installing ndk;25.2.9519653..."
+        yes | sdkmanager "ndk;25.2.9519653" || { echo "Failed to install NDK"; exit 1; }
+        
+        echo "Installing cmake;3.18.1..."
+        yes | sdkmanager "cmake;3.18.1" || { echo "Failed to install CMake"; exit 1; }
+        
+        echo "Installing patcher;v4..."
+        yes | sdkmanager "patcher;v4" || { echo "Failed to install patcher"; exit 1; }
+        
+        # Accept all SDK licenses
+        echo "=== Accepting SDK licenses ==="
+        yes | sdkmanager --licenses || { echo "Failed to accept licenses"; exit 1; }
+        
+        # Set NDK root for Buildozer compatibility
         echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+        
+        echo "=== Android SDK setup completed successfully ==="
 
     - name: Install Python packages
       run: |
