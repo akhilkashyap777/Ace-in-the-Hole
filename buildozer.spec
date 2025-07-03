@@ -3,7 +3,6 @@ title = Monte Card App
 package.name = montecard
 package.domain = com.montecard
 version = 1.0
-source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,html,css,js,json
 source.exclude_dirs = tests,bin,venv,__pycache__,.git,backup
 requirements = python3,kivy,kivymd,android,jnius,plyer,Pillow,bcrypt,cryptography,mutagen,qrcode,imageio,imageio-ffmpeg,psutil
