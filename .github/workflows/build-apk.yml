@@ -57,7 +57,7 @@ jobs:
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.0"
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;25.1.8937393"
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "cmake;3.18.1"
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "patcher;v4"
+
 
     - name: Install Python packages
       run: |
