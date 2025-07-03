@@ -1,4 +1,4 @@
-name: Build Kivy App with Nuitkaa
+name: Build Kivy App with Nuitka
 
 on:
   push:
@@ -24,6 +24,14 @@ jobs:
       run: |
         # Install Visual Studio Build Tools (needed for Nuitka)
         choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools"
+        if ($LASTEXITCODE -eq 3010) { 
+          Write-Host "Reboot required but ignoring for CI - installation successful"
+          exit 0 
+        }
+        if ($LASTEXITCODE -ne 0) { 
+          Write-Host "Installation failed with exit code $LASTEXITCODE"
+          exit $LASTEXITCODE 
+        }
         
     - name: Install Python dependencies
       run: |
