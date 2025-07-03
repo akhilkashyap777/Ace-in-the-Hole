@@ -1,4 +1,5 @@
 name: Build Monte Card APK
+
 on:
   push:
     branches: [ android-build ]
@@ -7,95 +8,98 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-        
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-17-jdk build-essential git unzip zip wget curl
-        
+
     - name: Set up Android SDK manually
       run: |
-        # Create Android SDK directory
-        mkdir -p $HOME/android-sdk
-        cd $HOME/android-sdk
-        
-        # Download and install command line tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip commandlinetools-linux-9477386_latest.zip
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ || true
-        
-        # Set environment variables
-        export ANDROID_HOME=$HOME/android-sdk
-        export ANDROID_SDK_ROOT=$HOME/android-sdk
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-        
-        # Accept licenses and install required packages
-        yes | sdkmanager --licenses
-        sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.0"
-        sdkmanager "ndk;25.2.9519653"
-        
-    - name: Set environment variables
-      run: |
-        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
-        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        # Set SDK root path and export to GITHUB_ENV for subsequent steps
+        # This makes ANDROID_SDK_ROOT and ANDROID_HOME available globally
         echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-        echo "ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-        echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-        echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        export ANDROID_SDK_ROOT=$HOME/android-sdk
+        export ANDROID_HOME=$HOME/android-sdk
+
+        # Create necessary directories for SDK
+        mkdir -p $ANDROID_SDK_ROOT
+
+        # Download Android Command Line Tools (latest stable version recommended for sdkmanager)
+        # Using a known stable version to ensure sdkmanager is available.
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-8583975_latest.zip -O cmdline-tools.zip
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
+        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools/latest
+        rm cmdline-tools.zip
+
+        # Add cmdline-tools to PATH temporarily for this step to use sdkmanager
+        export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+
+        # Install SDK components using sdkmanager
+        # 'yes |' is used to automatically accept licenses
+        yes | sdkmanager \
+          "platforms;android-33" \
+          "build-tools;33.0.0" \
+          "ndk;25.2.9519653" \
+          "cmake;3.18.1" \
+          "patcher;v4" # These components are often required by Buildozer or specific Android projects
         
+        # Accept all SDK licenses (crucial for CI)
+        yes | sdkmanager --licenses
+        
+        # Set NDK root for Buildozer compatibility, also add to GITHUB_ENV
+        echo "ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/25.2.9519653" >> $GITHUB_ENV
+
     - name: Install Python packages
       run: |
         python -m pip install --upgrade pip
         pip install buildozer cython==0.29.33 pillow
-        
-    - name: Setup Buildozer directories
+
+    - name: Set environment variables (for Java)
+      run: |
+        # JAVA_HOME is set here from system apt-get install
+        echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> $GITHUB_ENV
+        # ANDROID_HOME, ANDROID_SDK_ROOT, ANDROID_NDK_ROOT are now set by "Set up Android SDK manually" step
+
+    - name: Symlink build-tools for Buildozer
       run: |
         mkdir -p /home/runner/.buildozer/android/platform/android-sdk
         ln -sfn $ANDROID_SDK_ROOT/build-tools /home/runner/.buildozer/android/platform/android-sdk/build-tools
-        ln -sfn $ANDROID_SDK_ROOT/cmdline-tools/latest /home/runner/.buildozer/android/platform/android-sdk/tools
-        ln -sfn $ANDROID_SDK_ROOT/platforms /home/runner/.buildozer/android/platform/android-sdk/platforms
-        ln -sfn $ANDROID_SDK_ROOT/platform-tools /home/runner/.buildozer/android/platform/android-sdk/platform-tools
-        
-    - name: Verify SDK setup
+
+    - name: Symlink cmdline-tools for Buildozer compatibility
       run: |
-        echo "=== Environment Variables ==="
-        echo "ANDROID_HOME: $ANDROID_HOME"
-        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
-        echo "JAVA_HOME: $JAVA_HOME"
-        echo "=== SDK Structure ==="
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk
+        ln -sfn $ANDROID_SDK_ROOT/cmdline-tools/latest /home/runner/.buildozer/android/platform/android-sdk/tools
+
+    - name: Verify SDK paths
+      run: |
+        echo "=== Android SDK Structure ==="
         ls -la $ANDROID_SDK_ROOT/ || echo "SDK root not found"
-        echo "=== SDK Manager ==="
-        which sdkmanager || echo "sdkmanager not in PATH"
-        sdkmanager --list_installed || echo "Could not list installed packages"
-        
+        echo "=== Buildozer Expected Paths ==="
+        ls -la /home/runner/.buildozer/android/platform/android-sdk/ || echo "Buildozer paths not created yet"
+        echo "=== SDK Manager Location ==="
+        find $ANDROID_SDK_ROOT -name "sdkmanager" -type f || echo "sdkmanager not found"
+
     - name: Create app icon
       run: |
         mkdir -p data
-        python3 -c "
-from PIL import Image, ImageDraw
-img = Image.new('RGB', (512, 512), (33, 150, 243))
-draw = ImageDraw.Draw(img)
-draw.rectangle([100, 100, 412, 412], fill=(255, 255, 255))
-img.save('data/icon.png')
-print('Icon created successfully')
-        "
-        
+        python3 -c "from PIL import Image, ImageDraw; img = Image.new('RGB', (512, 512), (33, 150, 243)); draw = ImageDraw.Draw(img); draw.rectangle([100, 100, 412, 412], fill=(255, 255, 255)); img.save('data/icon.png'); print('Icon created')"
+
     - name: Cache buildozer global directory
       uses: actions/cache@v3
       with:
         path: .buildozer_global
         key: buildozer-global-${{ hashFiles('buildozer.spec') }}
-        
+
     - name: Cache buildozer directory
       uses: actions/cache@v3
       with:
@@ -103,24 +107,17 @@ print('Icon created successfully')
         key: buildozer-${{ hashFiles('buildozer.spec') }}
         restore-keys: |
           buildozer-
-          
+
     - name: Build APK
       run: |
-        # Ensure environment is properly set for buildozer
-        export ANDROID_HOME=$HOME/android-sdk
-        export ANDROID_SDK_ROOT=$HOME/android-sdk
-        export ANDROID_NDK_ROOT=$HOME/android-sdk/ndk/25.2.9519653
-        export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-        
-        # Build with buildozer
         yes | buildozer android debug
-        
+
     - name: List build output
       run: |
         echo "=== Build completed ==="
-        ls -la bin/ || echo "No bin directory found"
-        find . -name "*.apk" -type f || echo "No APK files found"
-        
+        ls -la bin/ || echo "No bin directory"
+        find . -name "*.apk" -type f || echo "No APK found"
+
     - name: Upload APK
       uses: actions/upload-artifact@v3
       if: success()
