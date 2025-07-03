@@ -24,7 +24,7 @@ jobs:
         sudo apt-get install -y openjdk-17-jdk build-essential git unzip zip wget curl
         
     - name: Set up Android SDK
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@v4
       with:
         api-level: 33
         build-tools-version: 33.0.0
