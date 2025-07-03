@@ -2,25 +2,23 @@
 title = Monte Card App
 package.name = montecard
 package.domain = com.montecard
-version = 1.0
 source.dir = .
-source.include_exts = py,png,jpg,kv,atlas,html,css,js,json
-source.exclude_dirs = tests,bin,venv,__pycache__,.git,backup
-requirements = python3,kivy,kivymd,android,jnius,plyer,Pillow,bcrypt,cryptography,mutagen,qrcode,imageio,imageio-ffmpeg,psutil
+source.include_exts = py,pyc,pyo,png,jpg,jpeg,gif,bmp,webp,tiff,kv,atlas,wav,mp3,mp4,avi,mov,mkv,txt,json,html,css,js
+source.exclude_patterns = spec/,pycache/,.git,.github/,tests/,bin/,venv/,backup/
+requirements = python3,kivy,kivymd,pillow,qrcode,requests,mutagen,imageio,jnius,cryptography,bcrypt,plyer,android,cython,psutil
+version = 1.0
+orientation = portrait
+fullscreen = 0
+android.accept_sdk_license = True
+android.permissions = INTERNET,ACCESS_NETWORK_STATE,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE,CAMERA,RECORD_AUDIO,MANAGE_EXTERNAL_STORAGE
+android.api = 33
+android.minapi = 21
+android.ndk = 25b
+android.archs = arm64-v8a
+android.allow_backup = True
+p4a.bootstrap = sdl2
 icon.filename = %(source.dir)s/data/icon.png
 
 [buildozer]
 log_level = 5
 warn_on_root = 1
-
-[android]
-android.arch = arm64-v8a,armeabi-v7a
-minapi = 21
-api = 33
-ndk = 25.2.9519653
-sdk = 33
-android.permissions = INTERNET,ACCESS_NETWORK_STATE,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE,CAMERA,RECORD_AUDIO
-android.private_storage = True
-android.allow_backup = False
-p4a.branch = develop
-p4a.bootstrap = sdl2
