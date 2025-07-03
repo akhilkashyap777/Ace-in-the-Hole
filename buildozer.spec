@@ -4,7 +4,7 @@ package.name = montecard
 package.domain = com.montecard
 version = 1.0
 source.dir = .
-
+source.include_exts = py,png,jpg,kv,atlas,html,css,js,json
 source.exclude_dirs = tests,bin,venv,__pycache__,.git,backup
 requirements = python3,kivy,kivymd,android,jnius,plyer,Pillow,bcrypt,cryptography,mutagen,qrcode,imageio,imageio-ffmpeg,psutil
 icon.filename = %(source.dir)s/data/icon.png
@@ -14,7 +14,7 @@ log_level = 5
 warn_on_root = 1
 
 [android]
-arch = arm64-v8a
+android.arch = arm64-v8a,armeabi-v7a
 minapi = 21
 api = 33
 ndk = 25.2.9519653
