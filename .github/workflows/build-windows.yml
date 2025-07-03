@@ -36,9 +36,9 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install Cython
         pip install nuitka
         # Install Cython first (needed for jnius)
-        pip install Cython
         # Install all requirements
         pip install -r requirements.txt
     
