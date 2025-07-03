@@ -2,9 +2,9 @@ name: Build Kivy App with Nuitka
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, imports-removed-backup ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, imports-removed-backup ]
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -18,19 +18,33 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'  # Adjust to your Python version
+        python-version: '3.10'
     
     - name: Install system dependencies
       run: |
         # Install Visual Studio Build Tools (needed for Nuitka)
         choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools"
-        if ($LASTEXITCODE -eq 3010) { Write-Host "Reboot required, ignoring for CI"; exit 0 }
+        if ($LASTEXITCODE -eq 3010) { 
+          Write-Host "Reboot required but ignoring for CI - installation successful"
+          exit 0 
+        }
+        if ($LASTEXITCODE -ne 0) { 
+          Write-Host "Installation failed with exit code $LASTEXITCODE"
+          exit $LASTEXITCODE 
+        }
         
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
         pip install nuitka
-        pip install -r requirements.txt
+        # Check if requirements.txt exists
+        if (Test-Path "requirements.txt") {
+          Write-Host "Installing from requirements.txt"
+          pip install -r requirements.txt
+        } else {
+          Write-Host "No requirements.txt found, installing basic dependencies"
+          pip install kivy kivymd plyer cryptography pillow qrcode psutil
+        }
     
     - name: Create Nuitka build script
       run: |
@@ -80,25 +94,3 @@ jobs:
         name: windows-executable
         path: dist/main.exe
         retention-days: 30
-    
-    - name: Create Release (on tag)
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-    
-    - name: Upload Release Asset (on tag)
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: dist/main.exe
-        asset_name: YourApp-Windows.exe
-        asset_content_type: application/octet-stream
