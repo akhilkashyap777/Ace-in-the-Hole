@@ -6,7 +6,7 @@ version = 1.0
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,html,css,js,json
 source.exclude_dirs = tests,bin,venv,__pycache__,.git,backup
-requirements = python3,kivy,kivymd,android,jnius,plyer,Pillow,bcrypt,cryptography,mutagen,pygame,qrcode,imageio,imageio-ffmpeg,psutil
+requirements = python3,kivy,kivymd,android,jnius,plyer,Pillow,bcrypt,cryptography,mutagen,qrcode,imageio,imageio-ffmpeg,psutil
 icon.filename = %(source.dir)s/data/icon.png
 
 [buildozer]
