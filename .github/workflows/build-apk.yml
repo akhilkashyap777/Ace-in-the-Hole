@@ -37,8 +37,9 @@ jobs:
         # Download Android Command Line Tools (latest stable version recommended for sdkmanager)
         # Using a known stable version to ensure sdkmanager is available.
         wget -q https://dl.google.com/android/repository/commandlinetools-linux-8583975_latest.zip -O cmdline-tools.zip
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools/latest
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+        mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
         rm cmdline-tools.zip
 
         # Add cmdline-tools to PATH temporarily for this step to use sdkmanager
