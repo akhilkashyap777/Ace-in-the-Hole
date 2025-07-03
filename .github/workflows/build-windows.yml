@@ -18,7 +18,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.10'  # Adjust to your Python version
     
     - name: Install system dependencies
       run: |
@@ -37,14 +37,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install nuitka
-        # Check if requirements.txt exists
-        if (Test-Path "requirements.txt") {
-          Write-Host "Installing from requirements.txt"
-          pip install -r requirements.txt
-        } else {
-          Write-Host "No requirements.txt found, installing basic dependencies"
-          pip install kivy kivymd plyer cryptography pillow qrcode psutil
-        }
+        # Install Cython first (needed for jnius)
+        pip install Cython
+        # Install all requirements
+        pip install -r requirements.txt
     
     - name: Create Nuitka build script
       run: |
@@ -94,3 +90,25 @@ jobs:
         name: windows-executable
         path: dist/main.exe
         retention-days: 30
+    
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+    
+    - name: Upload Release Asset (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: dist/main.exe
+        asset_name: YourApp-Windows.exe
+        asset_content_type: application/octet-stream
