@@ -65,7 +65,6 @@ jobs:
           --include-data-dir=fonts=fonts ^
           --include-data-dir=data=data ^
           --include-data-dir=sounds=sounds ^
-          --windows-icon-from-ico=icon.ico ^
           --product-name="Ace in the Hole" ^
           --file-version="1.0.0" ^
           --product-version="1.0.0" ^
