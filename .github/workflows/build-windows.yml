@@ -1,4 +1,4 @@
-name: Build Kivy App with Nuitka
+name: Build Kivy App with Nuitkaa
 
 on:
   push:
