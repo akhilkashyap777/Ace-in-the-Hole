@@ -3,13 +3,14 @@ title = Monte Card App
 package.name = montecard
 package.domain = com.montecard
 version = 1.0
-source.include_exts = py,png,jpg,kv,atlas,html,css,js,json
+source.dir = .
+
 source.exclude_dirs = tests,bin,venv,__pycache__,.git,backup
 requirements = python3,kivy,kivymd,android,jnius,plyer,Pillow,bcrypt,cryptography,mutagen,qrcode,imageio,imageio-ffmpeg,psutil
 icon.filename = %(source.dir)s/data/icon.png
 
 [buildozer]
-log_level = 2
+log_level = 5
 warn_on_root = 1
 
 [android]
