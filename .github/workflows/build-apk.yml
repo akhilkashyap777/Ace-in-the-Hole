@@ -63,7 +63,7 @@ jobs:
       run: |
         pip install --user --upgrade pip
         pip install --user --upgrade Cython==0.29.36 virtualenv
-        pip install --user --upgrade buildozer==1.5.0
+        pip install --user --upgrade buildozer==1.5.0 pillow
 
     - name: Set environment variables (for Java)
       run: |
