@@ -11,7 +11,10 @@ import signal
 from kivy.clock import Clock
 
 # Import the core class
-from video_vault_core_optimized import VideoVaultCore, ANDROID, IMAGEIO_AVAILABLE, PSUTIL_AVAILABLE
+from video_vault_core_optimized import VideoVaultCore, IMAGEIO_AVAILABLE, PSUTIL_AVAILABLE
+
+# REMOVED: ANDROID import - desktop only now
+ANDROID = False  # Always False for desktop-only version
 
 def find_processes_using_file(file_path):
     """Find what processes are using a file on Windows"""
@@ -225,6 +228,7 @@ class VideoVaultCoreExtended(VideoVaultCore):
                 signal.signal(signal.SIGALRM, lambda signum, frame: None)
                 signal.alarm(3)  # 3 second timeout
             
+            import imageio
             reader = imageio.get_reader(video_path, 'ffmpeg')
             self.resource_manager.register_imageio_reader(reader)
             
@@ -342,6 +346,7 @@ class VideoVaultCoreExtended(VideoVaultCore):
         try:
             print(f"Searching for processes using file: {file_path}")
             # Find and terminate processes with open handles to this file
+            import psutil
             for proc in psutil.process_iter(['pid', 'name']):
                 try:
                     # Skip critical system processes
@@ -637,35 +642,19 @@ class VideoVaultCoreExtended(VideoVaultCore):
             return {'success': False, 'error': str(e), 'needs_folder_selection': True}
 
     def select_export_folder(self, callback):
-        """Select folder for export - Cross-platform"""
-        if ANDROID:
-            self.android_folder_picker(callback)
-        else:
-            self.desktop_folder_picker(callback)
+        """Select folder for export - Desktop only"""
+        # SIMPLIFIED: Only desktop folder picker now
+        self.desktop_folder_picker(callback)
 
-    def android_folder_picker(self, callback):
-        """Android folder picker using SAF"""
-        try:
-            from jnius import autoclass, cast
-            
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            Intent = autoclass('android.content.Intent')
-            
-            intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-            currentActivity.startActivityForResult(intent, 42)  # Request code 42
-            
-            # For now, fallback to basic implementation
-            self.fallback_folder_picker(callback)
-            
-        except Exception as e:
-            print(f"Android folder picker error: {e}")
-            callback({'success': False, 'error': 'Failed to open folder picker'})
+    # REMOVED: android_folder_picker method completely
 
     def desktop_folder_picker(self, callback):
-        """Desktop folder picker"""
+        """Desktop folder picker using tkinter"""
         def pick_folder():
             try:
+                import tkinter as tk
+                from tkinter import filedialog
+                
                 root = tk.Tk()
                 root.withdraw()
                 
@@ -690,12 +679,10 @@ class VideoVaultCoreExtended(VideoVaultCore):
         thread.start()
 
     def fallback_folder_picker(self, callback):
-        """Fallback folder picker using Kivy"""
+        """Fallback folder picker - Desktop only"""
         try:
-            if ANDROID:
-                fallback_folder = os.path.join(app_storage_path(), 'exported_videos')
-            else:
-                fallback_folder = os.path.join(os.path.expanduser('~'), 'Videos')
+            # SIMPLIFIED: Desktop-only fallback
+            fallback_folder = os.path.join(os.path.expanduser('~'), 'Videos')
             
             if not os.path.exists(fallback_folder):
                 os.makedirs(fallback_folder)

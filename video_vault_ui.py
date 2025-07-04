@@ -16,11 +16,18 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivymd.uix.card import MDCard
-from video_camera_module import VideoCameraModule
 import gc
 
 # Import the core video vault functionality
-from video_vault_core import VideoVaultCore, ANDROID
+from video_vault_core import VideoVaultCore
+
+# REMOVED: Android imports and detection
+# Desktop-only imports
+import tkinter as tk
+from tkinter import filedialog
+
+# SIMPLIFIED: Desktop-only platform detection
+ANDROID = False  # Always False for desktop-only version
 
 # Import dialog components
 from video_vault_dialogs import (
@@ -34,17 +41,6 @@ from video_vault_dialogs import (
     show_no_selection_popup,
     show_error_popup
 )
-
-# Import Android/Desktop specific modules for file selection
-if not ANDROID:
-    import tkinter as tk
-    from tkinter import filedialog
-else:
-    try:
-        from plyer import filechooser
-        from android.storage import primary_external_storage_path
-    except ImportError:
-        pass
 
 class VideoVault(VideoVaultCore):
     """Main Video Vault class that combines core functionality with UI methods"""
@@ -105,30 +101,16 @@ class VideoVault(VideoVaultCore):
             return 0
     
     def select_videos_from_gallery(self, callback):
-        """Open gallery/file picker to select videos"""
+        """Open file picker to select videos - Desktop only"""
         if self.processing:
             print("Already processing, ignoring request")
             return
             
         self.processing = True
-        print("Starting video selection from gallery...")
+        print("Starting video selection from computer...")
         
-        if ANDROID:
-            try:
-                def on_selection(selection):
-                    Clock.schedule_once(lambda dt: self.handle_selection_async(selection, callback), 0)
-                
-                filechooser.open_file(
-                    on_selection=on_selection,
-                    multiple=True,
-                    filters=['*.mp4', '*.avi', '*.mov', '*.mkv', '*.wmv', '*.flv', '*.webm', '*.3gp', '*.ogg', '*.ogv']
-                )
-            except Exception as e:
-                print(f"Error opening Android file chooser: {e}")
-                self.processing = False
-                self.fallback_file_picker(callback)
-        else:
-            self.desktop_file_picker(callback)
+        # SIMPLIFIED: Desktop-only file selection
+        self.desktop_file_picker(callback)
     
     def desktop_file_picker(self, callback):
         """Desktop file picker using tkinter"""
@@ -138,7 +120,7 @@ class VideoVault(VideoVaultCore):
                 root.withdraw()  # Hide the main window
                 
                 file_paths = filedialog.askopenfilenames(
-                    title="Select Videos",
+                    title="Select Videos from Computer",  # UPDATED: More desktop-appropriate
                     filetypes=[
                         ("Video files", "*.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.3gp *.ogg *.ogv"),
                         ("All files", "*.*")
@@ -153,6 +135,8 @@ class VideoVault(VideoVaultCore):
             except Exception as e:
                 print(f"Desktop file picker error: {e}")
                 self.processing = False
+                # Fallback to Kivy file chooser
+                self.fallback_file_picker(callback)
         
         # Run in separate thread to avoid blocking
         thread = threading.Thread(target=pick_files)
@@ -160,7 +144,7 @@ class VideoVault(VideoVaultCore):
         thread.start()
     
     def fallback_file_picker(self, callback):
-        """Fallback file picker using Kivy's FileChooser"""
+        """Fallback file picker using Kivy's FileChooser - Desktop optimized"""
         def on_selection_callback(file_paths):
             self.handle_selection_async(file_paths, callback)
         
@@ -242,12 +226,9 @@ class VideoGalleryWidget(MDBoxLayout):
     def __init__(self, video_vault, **kwargs):
         super().__init__(orientation='vertical', **kwargs)
         self.video_vault = video_vault
-        self.vault_core = video_vault  # Add this line for camera module compatibility
+        self.vault_core = video_vault  # Add this line for compatibility
         self.selected_video = None
         self.video_widgets = []  # Keep track of video widgets for cleanup
-        
-        # Initialize camera module
-        self.camera_module = VideoCameraModule(self)
         
         # Set BlueGray background
         self.md_bg_color = [0.37, 0.49, 0.55, 1]
@@ -273,7 +254,7 @@ class VideoGalleryWidget(MDBoxLayout):
         header = MDBoxLayout(
             orientation='vertical',
             size_hint_y=None,
-            height=dp(120),
+            height=dp(80),  # Compact header for desktop
             padding=[20, 20, 20, 10],
             spacing=10
         )
@@ -307,10 +288,6 @@ class VideoGalleryWidget(MDBoxLayout):
         actions_row.add_widget(self.add_btn)
         
         header.add_widget(actions_row)
-        
-        # Add camera buttons
-        camera_buttons = self.camera_module.build_camera_buttons()
-        header.add_widget(camera_buttons)
         
         self.add_widget(header)
     
@@ -390,8 +367,6 @@ class VideoGalleryWidget(MDBoxLayout):
         self.add_btn.disabled = True
         self.add_btn.text = 'Processing...'
         
-        self.video_vault.request_permissions()
-        
         def on_videos_added(imported_files, moved_files):
             # Re-enable button
             self.add_btn.disabled = False
@@ -446,7 +421,7 @@ class VideoGalleryWidget(MDBoxLayout):
         )
         
         empty_label = MDLabel(
-            text='🎬 No videos in vault\n\nTap "Add Videos" to import your videos\nfrom gallery and keep them secure',
+            text='🎬 No videos in vault\n\nTap "Add Videos" to import your videos\nfrom your computer and keep them secure',  # UPDATED: Desktop-appropriate text
             font_style="Body1",
             halign='center',
             text_color=[0.7, 0.7, 0.7, 1]

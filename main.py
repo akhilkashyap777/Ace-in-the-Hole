@@ -116,13 +116,6 @@ debug_environment()
 # ============ END DEBUG SECTION ============
 
 # Lazy imports - loaded only when needed
-def get_android_modules():
-    try:
-        from android.permissions import request_permissions, Permission
-        from plyer import notification
-        return request_permissions, Permission, notification, True
-    except ImportError:
-        return None, None, None, False
 
 class VaultCardManager:
     """Manages vault cards lifecycle and prevents memory leaks"""
@@ -286,11 +279,6 @@ class VaultApp(MDApp):
         Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
         Config.set('graphics', 'show_cursor', '1')
         
-        # Lazy load Android modules
-        request_permissions, Permission, notification, is_android = get_android_modules()
-        if is_android and request_permissions:
-            request_permissions([Permission.WRITE_EXTERNAL_STORAGE])
-        
         Window.bind(on_key_down=self.on_key_down)
         
         self.main_layout = MDBoxLayout(orientation='vertical')
@@ -433,18 +421,6 @@ class VaultApp(MDApp):
         self.vault_open = True
         self.screen_manager.transition_to('vault_main', self.create_vault_widget)
         
-        # Lazy load notification
-        _, _, notification, is_android = get_android_modules()
-        if is_android and notification:
-            try:
-                notification.notify(
-                    title='Vault Opened',
-                    message='Secret vault has been unlocked',
-                    timeout=2
-                )
-            except:
-                pass
-    
     def open_vault(self):
         """Backward compatibility for existing code"""
         self.show_vault_screen()
@@ -491,7 +467,6 @@ class VaultApp(MDApp):
             self.password_ui.show_password_prompt()
     
     def on_stop(self):
-        """Clean shutdown"""
         self.screen_manager.cleanup_current_screen()
         
         if self.card_manager:

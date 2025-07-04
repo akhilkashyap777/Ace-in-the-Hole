@@ -4,16 +4,9 @@ import shutil
 from datetime import datetime, timedelta
 from kivy.clock import Clock
 
-# Try to import Android-specific modules
-try:
-    from android.storage import app_storage_path
-    ANDROID = True
-except ImportError:
-    ANDROID = False
-
 class RecycleBinCore:
     """
-    Flexible Recycle Bin System for Secret Vault App
+    Flexible Recycle Bin System for Secret Vault App (Desktop Version)
     
     Supports ANY file type: photos, videos, notes, audio, apps, documents, etc.
     Designed to be extensible for future vault additions.
@@ -76,18 +69,12 @@ class RecycleBinCore:
         self.start_cleanup_scheduler()
     
     def get_recycle_directory(self):
-        """Get the recycle bin directory"""
+        """Get the recycle bin directory for desktop application"""
         if hasattr(self.app, 'secure_storage'):
             return self.app.secure_storage.get_recycle_directory()
         
-        # Fallback to original
-        if ANDROID:
-            try:
-                return os.path.join(app_storage_path(), 'vault_recycle')
-            except:
-                return os.path.join('/sdcard', 'vault_recycle')
-        else:
-            return os.path.join(os.getcwd(), 'vault_recycle')
+        # Default to vault_recycle directory in current working directory
+        return os.path.join(os.getcwd(), 'vault_recycle')
     
     def ensure_recycle_directory(self):
         """Create recycle directory structure for all file types"""

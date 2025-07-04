@@ -9,17 +9,8 @@ from kivy.uix.popup import Popup
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.clock import Clock
 from kivy.metrics import dp
-
-# Try to import Android-specific modules
-try:
-    from android.permissions import request_permissions, Permission
-    from plyer import filechooser
-    from android.storage import primary_external_storage_path
-    ANDROID = True
-except ImportError:
-    ANDROID = False
-    import tkinter as tk
-    from tkinter import filedialog
+import tkinter as tk
+from tkinter import filedialog
 
 # Import stats widget
 from audio_vault_stats import AudioVaultStatsWidget
@@ -29,22 +20,8 @@ from audio_vault_stats import AudioVaultStatsWidget
 # ===============================================================================
 
 def show_add_audio_dialog(audio_vault_core, refresh_callback):
-    """Show file picker to add audio files - WITH FALLBACK MECHANISM"""
-    if ANDROID:
-        try:
-            def on_selection(selection):
-                Clock.schedule_once(lambda dt: handle_selection_async(selection, audio_vault_core, refresh_callback), 0)
-            
-            filechooser.open_file(
-                on_selection=on_selection,
-                multiple=True,
-                filters=['*.mp3', '*.wav', '*.flac', '*.aac', '*.m4a', '*.ogg', '*.wma', '*.opus']
-            )
-        except Exception as e:
-            print(f"Error opening Android file chooser: {e}")
-            fallback_file_picker(audio_vault_core, refresh_callback)
-    else:
-        desktop_file_picker(audio_vault_core, refresh_callback)
+    """Show file picker to add audio files - Desktop implementation"""
+    desktop_file_picker(audio_vault_core, refresh_callback)
 
 def desktop_file_picker(audio_vault_core, refresh_callback):
     """Desktop file picker using tkinter"""
@@ -91,13 +68,7 @@ def fallback_file_picker(audio_vault_core, refresh_callback):
     content.add_widget(instruction_label)
     
     # File chooser
-    if ANDROID:
-        try:
-            start_path = primary_external_storage_path()
-        except:
-            start_path = '/sdcard'
-    else:
-        start_path = os.path.expanduser('~')
+    start_path = os.path.expanduser('~')
     
     file_chooser = FileChooserIconView(
         path=start_path,
@@ -450,7 +421,7 @@ def play_audio_file_system(audio_file):
                 os.startfile(audio_path)
             elif system == "Darwin":  # macOS
                 subprocess.run(["open", audio_path])
-            else:  # Linux and Android
+            else:  # Linux
                 subprocess.run(["xdg-open", audio_path])
             
             # Show confirmation
@@ -490,30 +461,8 @@ def play_audio_file_system(audio_file):
 # ===============================================================================
 
 def export_audio_file(audio_file, audio_vault_core):
-    """Export audio file using fallback mechanism"""
-    if ANDROID:
-        try:
-            def folder_selected(folder_path):
-                """Callback when folder is selected"""
-                if folder_path:
-                    if isinstance(folder_path, list):
-                        folder_path = folder_path[0]
-                    
-                    destination_path = os.path.join(folder_path, audio_file['original_filename'])
-                    export_audio_file_with_progress(audio_file, destination_path, audio_vault_core)
-                else:
-                    print("ℹ️ No folder selected for export")
-            
-            # Open native folder picker
-            filechooser.choose_dir(
-                title="Select Export Destination",
-                on_selection=folder_selected
-            )
-        except Exception as e:
-            print(f"Error opening folder picker: {e}")
-            export_with_fallback_picker(audio_file, audio_vault_core)
-    else:
-        export_with_desktop_picker(audio_file, audio_vault_core)
+    """Export audio file using desktop file picker"""
+    export_with_desktop_picker(audio_file, audio_vault_core)
 
 def export_with_desktop_picker(audio_file, audio_vault_core):
     """Export using desktop folder picker"""
@@ -817,11 +766,3 @@ def show_no_selection_popup(action):
     )
     popup.open()
     Clock.schedule_once(lambda dt: popup.dismiss(), 2)
-
-print("✅ Audio Vault Dialogs module loaded successfully")
-print("🎵 Complete dialog system with fallback mechanisms:")
-print("   📱 Android: Native file pickers")
-print("   🖥️ Desktop: Tkinter dialogs")  
-print("   🔄 Fallback: Kivy FileChooser")
-print("📊 Progress tracking and user feedback")
-print("🗑️ Safe deletion with recycle bin integration")

@@ -1,5 +1,3 @@
-# password_manager.py - Cross-platform password management
-# ✅ OPTIMIZED VERSION - Fixed memory leaks and performance issues
 import os
 import json
 import time
@@ -9,26 +7,11 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 
-# Android keystore imports
-try:
-    from jnius import autoclass
-    ANDROID = True
-    # Android Keystore classes
-    KeyStore = autoclass('java.security.KeyStore')
-    KeyGenerator = autoclass('javax.crypto.KeyGenerator')
-    KeyGenParameterSpec = autoclass('android.security.keystore.KeyGenParameterSpec')
-    KeyProperties = autoclass('android.security.keystore.KeyProperties')
-    Cipher = autoclass('javax.crypto.Cipher')
-    SecretKeySpec = autoclass('javax.crypto.spec.SecretKeySpec')
-except ImportError:
-    ANDROID = False
-
 class PasswordManager:
     def __init__(self, app_name="SecretVault"):
         self.app_name = app_name
         self.config_dir = self._get_config_directory()
         self.config_file = os.path.join(self.config_dir, "vault_config.dat")
-        self.keystore_alias = "vault_master_key"
         
         # ✅ OPTIMIZATION: Cache config data to avoid repeated file operations
         self._config_cache = None
@@ -38,56 +21,18 @@ class PasswordManager:
         # Ensure config directory exists
         os.makedirs(self.config_dir, exist_ok=True)
         
-        # Initialize encryption
-        self._setup_encryption()
+        # Initialize desktop encryption
+        self._setup_desktop_encryption()
     
     def _get_config_directory(self):
-        """Get platform-specific config directory"""
-        if ANDROID:
-            # Android app private directory
-            from android.storage import app_storage_path
-            return app_storage_path()
-        else:
-            # Desktop platforms
-            home = os.path.expanduser("~")
-            if os.name == 'nt':  # Windows
-                return os.path.join(os.environ.get('APPDATA', home), self.app_name)
-            elif os.sys.platform == 'darwin':  # macOS
-                return os.path.join(home, 'Library', 'Application Support', self.app_name)
-            else:  # Linux
-                return os.path.join(home, '.config', self.app_name)
-    
-    def _setup_encryption(self):
-        """Setup encryption key based on platform"""
-        if ANDROID:
-            self._setup_android_keystore()
-        else:
-            self._setup_desktop_encryption()
-    
-    def _setup_android_keystore(self):
-        """Setup Android Keystore encryption"""
-        try:
-            keystore = KeyStore.getInstance("AndroidKeyStore")
-            keystore.load(None)
-            
-            if not keystore.containsAlias(self.keystore_alias):
-                # Generate new key in keystore
-                keygen = KeyGenerator.getInstance("AES", "AndroidKeyStore")
-                spec = KeyGenParameterSpec.Builder(
-                    self.keystore_alias,
-                    KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT
-                ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)\
-                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)\
-                 .build()
-                
-                keygen.init(spec)
-                keygen.generateKey()
-            
-            self.use_keystore = True
-        except Exception as e:
-            print(f"Keystore setup failed: {e}")
-            self.use_keystore = False
-            self._setup_desktop_encryption()
+        """Get platform-specific config directory - Desktop only"""
+        home = os.path.expanduser("~")
+        if os.name == 'nt':  # Windows
+            return os.path.join(os.environ.get('APPDATA', home), self.app_name)
+        elif os.sys.platform == 'darwin':  # macOS
+            return os.path.join(home, 'Library', 'Application Support', self.app_name)
+        else:  # Linux
+            return os.path.join(home, '.config', self.app_name)
     
     def _setup_desktop_encryption(self):
         """Setup desktop file-based encryption"""
@@ -126,63 +71,14 @@ class PasswordManager:
                     pass
         
         self.cipher = Fernet(self.encryption_key)
-        self.use_keystore = False
     
     def _encrypt_data(self, data):
-        """Encrypt data based on platform"""
-        if ANDROID and self.use_keystore:
-            return self._android_encrypt(data)
-        else:
-            return self.cipher.encrypt(data.encode()).decode()
+        """Encrypt data using desktop encryption"""
+        return self.cipher.encrypt(data.encode()).decode()
     
     def _decrypt_data(self, encrypted_data):
-        """Decrypt data based on platform"""
-        if ANDROID and self.use_keystore:
-            return self._android_decrypt(encrypted_data)
-        else:
-            return self.cipher.decrypt(encrypted_data.encode()).decode()
-    
-    def _android_encrypt(self, data):
-        """Android Keystore encryption"""
-        try:
-            keystore = KeyStore.getInstance("AndroidKeyStore")
-            keystore.load(None)
-            
-            key = keystore.getKey(self.keystore_alias, None)
-            cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, key)
-            
-            encrypted_bytes = cipher.doFinal(data.encode())
-            iv = cipher.getIV()
-            
-            # Combine IV and encrypted data
-            result = base64.b64encode(iv + encrypted_bytes).decode()
-            return result
-        except Exception as e:
-            print(f"Android encryption failed: {e}")
-            return data  # Fallback to plain text
-    
-    def _android_decrypt(self, encrypted_data):
-        """Android Keystore decryption"""
-        try:
-            keystore = KeyStore.getInstance("AndroidKeyStore")
-            keystore.load(None)
-            
-            key = keystore.getKey(self.keystore_alias, None)
-            cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            
-            # Decode and split IV and data
-            combined = base64.b64decode(encrypted_data.encode())
-            iv = combined[:12]  # GCM IV is 12 bytes
-            encrypted_bytes = combined[12:]
-            
-            cipher.init(Cipher.DECRYPT_MODE, key, iv)
-            decrypted_bytes = cipher.doFinal(encrypted_bytes)
-            
-            return decrypted_bytes.decode()
-        except Exception as e:
-            print(f"Android decryption failed: {e}")
-            return encrypted_data  # Return as-is if decryption fails
+        """Decrypt data using desktop encryption"""
+        return self.cipher.decrypt(encrypted_data.encode()).decode()
     
     def _load_config(self):
         """✅ OPTIMIZATION: Load and cache config data to avoid repeated file operations"""
@@ -251,12 +147,10 @@ class PasswordManager:
             'setup_complete': True
         }
         
-        # Save config using optimized method
         self._save_config(config)
         return True
     
     def verify_pin(self, pin):
-        """✅ OPTIMIZED: Verify entered PIN with caching"""
         config = self._load_config()
         if not config:
             return False, "error"
@@ -279,7 +173,6 @@ class PasswordManager:
                 config['failed_attempts'] = config.get('failed_attempts', 0) + 1
                 config['last_attempt_time'] = current_time
                 
-                # Check if should lock out (5 attempts per hour)
                 if config['failed_attempts'] >= 5:
                     config['lockout_until'] = current_time + 3600  # 1 hour lockout
                     config['failed_attempts'] = 0  # Reset for next hour
@@ -292,7 +185,6 @@ class PasswordManager:
             return False, "error"
     
     def verify_security_answer(self, answer):
-        """✅ OPTIMIZED: Verify security question answer with caching"""
         config = self._load_config()
         if not config:
             return False
@@ -304,7 +196,6 @@ class PasswordManager:
             return False
     
     def get_security_question(self):
-        """✅ OPTIMIZED: Get the security question with caching"""
         config = self._load_config()
         if not config:
             return None
@@ -312,7 +203,6 @@ class PasswordManager:
         return config.get('security_question')
     
     def reset_password(self, new_pin):
-        """✅ OPTIMIZED: Reset password using security question with caching"""
         config = self._load_config()
         if not config:
             return False
@@ -331,7 +221,6 @@ class PasswordManager:
             return False
     
     def get_lockout_time_remaining(self):
-        """✅ OPTIMIZED: Get remaining lockout time in seconds with caching"""
         config = self._load_config()
         if not config:
             return 0
@@ -349,7 +238,6 @@ class PasswordManager:
             return 0
     
     def clear_cache(self):
-        """✅ OPTIMIZATION: Clear internal cache (useful for testing or manual refresh)"""
         self._config_cache = None
         self._cache_timestamp = 0
         self._cache_dirty = True

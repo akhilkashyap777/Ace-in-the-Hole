@@ -5,23 +5,17 @@ import mimetypes
 from datetime import datetime
 from kivy.clock import Clock
 import re
+import tkinter as tk
+from tkinter import filedialog
 
-# Cross-platform imports
-try:
-    from android.permissions import request_permissions, Permission
-    from plyer import filechooser
-    from android.storage import primary_external_storage_path, app_storage_path
-    ANDROID = True
-except ImportError:
-    ANDROID = False
-    import tkinter as tk
-    from tkinter import filedialog
+# Desktop-only version - All Android code removed
+ANDROID = False
 
 class DocumentVaultCore:
     """
     Universal Document Vault - Handles ANY non-media file type
     
-    Cross-platform compatible: Android, Windows, macOS, Linux
+    Desktop compatible: Windows, macOS, Linux
     Future-ready: Extensible for contacts, passwords, bookmarks, etc.
     """
     
@@ -123,19 +117,12 @@ class DocumentVaultCore:
         mimetypes.init()
     
     def get_vault_directory(self):
-        """Get secure directory for document vault - Cross-platform"""
+        """Get secure directory for document vault - Desktop"""
         if hasattr(self.app, 'secure_storage'):
             return self.app.secure_storage.get_vault_directory('documents')
         
-        # Cross-platform fallback
-        if ANDROID:
-            try:
-                return os.path.join(app_storage_path(), 'vault_documents')
-            except:
-                return os.path.join('/sdcard', 'vault_documents')
-        else:
-            # Windows, macOS, Linux
-            return os.path.join(os.getcwd(), 'vault_documents')
+        # Desktop fallback
+        return os.path.join(os.getcwd(), 'vault_documents')
     
     def ensure_vault_directory(self):
         """Create vault directory structure"""
@@ -180,44 +167,16 @@ class DocumentVaultCore:
         return file_ext not in self.EXCLUDED_EXTENSIONS
     
     def request_permissions(self):
-        """Request file access permissions - Cross-platform"""
-        if ANDROID:
-            try:
-                request_permissions([
-                    Permission.READ_EXTERNAL_STORAGE,
-                    Permission.WRITE_EXTERNAL_STORAGE
-                ])
-            except Exception as e:
-                print(f"Permission error: {e}")
+        """No permissions needed on desktop"""
+        pass
     
     def select_documents_from_storage(self, callback):
-        """Open file picker to select documents - Cross-platform"""
+        """Open file picker to select documents - Desktop only"""
         if self.processing:
             return
             
         self.processing = True
-        
-        if ANDROID:
-            self.android_file_picker(callback)
-        else:
-            self.desktop_file_picker(callback)
-    
-    def android_file_picker(self, callback):
-        """Android file picker using plyer"""
-        try:
-            def on_selection(selection):
-                Clock.schedule_once(lambda dt: self.handle_selection_async(selection, callback), 0)
-            
-            # Android file picker - accept all non-media files
-            filechooser.open_file(
-                on_selection=on_selection,
-                multiple=True,
-                filters=['*.*']  # Accept all files, we'll filter later
-            )
-        except Exception as e:
-            print(f"Error opening Android file chooser: {e}")
-            self.processing = False
-            self.fallback_file_picker(callback)
+        self.desktop_file_picker(callback)
     
     def desktop_file_picker(self, callback):
         """Desktop file picker - Windows, macOS, Linux"""
@@ -233,6 +192,7 @@ class DocumentVaultCore:
                         ("Spreadsheets", "*.xls *.xlsx *.csv"),
                         ("Code files", "*.py *.js *.html *.css *.json"),
                         ("Archives", "*.zip *.rar *.7z"),
+                        ("Contact files", "*.vcf *.contact"),
                         ("All files", "*.*")
                     ]
                 )
@@ -258,14 +218,8 @@ class DocumentVaultCore:
         
         content = BoxLayout(orientation='vertical', spacing=10, padding=10)
         
-        # Get starting path based on platform
-        if ANDROID:
-            try:
-                start_path = primary_external_storage_path()
-            except:
-                start_path = '/sdcard'
-        else:
-            start_path = os.path.expanduser('~')
+        # Use home directory as starting path
+        start_path = os.path.expanduser('~')
         
         filechooser = FileChooserIconView(
             path=start_path,
@@ -387,9 +341,7 @@ class DocumentVaultCore:
                         
                         if os.path.isfile(file_path):
                             try:
-                                # Extract original filename from vault filename
                                 # Extract original filename using regex
-
                                 match = re.match(r'vault_\d{8}_\d{6}_\d+_(.+)', filename)
                                 if match:
                                     original_name = match.group(1)
@@ -489,7 +441,6 @@ class DocumentVaultCore:
             if not os.path.exists(document_path):
                 return {'success': False, 'error': 'Document not found'}
             
-            # Get original filename
             # Get original filename using regex
             vault_filename = os.path.basename(document_path)
             match = re.match(r'vault_\d{8}_\d{6}_\d+_(.+)', vault_filename)
@@ -592,40 +543,13 @@ class DocumentVaultCore:
             }
         
     def select_export_folder(self, callback):
-        """Select folder for export - Cross-platform"""
-        if ANDROID:
-            self.android_folder_picker(callback)
-        else:
-            self.desktop_folder_picker(callback)
-
-    def android_folder_picker(self, callback):
-        """Android folder picker using SAF"""
-        try:
-            # Use Storage Access Framework for folder selection
-            from jnius import autoclass, cast
-            
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            Intent = autoclass('android.content.Intent')
-            
-            intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-            currentActivity.startActivityForResult(intent, 42)  # Request code 42
-            
-            # Note: You'll need to handle the result in your Android activity
-            # For now, fallback to basic implementation
-            self.fallback_folder_picker(callback)
-            
-        except Exception as e:
-            print(f"Android folder picker error: {e}")
-            callback({'success': False, 'error': 'Failed to open folder picker'})
+        """Select folder for export - Desktop only"""
+        self.desktop_folder_picker(callback)
 
     def desktop_folder_picker(self, callback):
         """Desktop folder picker"""
         def pick_folder():
             try:
-                import tkinter as tk
-                from tkinter import filedialog
-                
                 root = tk.Tk()
                 root.withdraw()
                 
@@ -648,21 +572,4 @@ class DocumentVaultCore:
         thread.daemon = True
         thread.start()
 
-    def fallback_folder_picker(self, callback):
-        """Fallback folder picker using Kivy"""
-        # Use app's external storage as fallback
-        try:
-            if ANDROID:
-                fallback_folder = os.path.join(app_storage_path(), 'exported')
-            else:
-                fallback_folder = os.path.join(os.path.expanduser('~'), 'Documents')
-            
-            if not os.path.exists(fallback_folder):
-                os.makedirs(fallback_folder)
-            
-            callback({'success': True, 'folder_path': fallback_folder, 'is_fallback': True})
-            
-        except Exception as e:
-            callback({'success': False, 'error': f'Fallback folder creation failed: {e}'})
-
-print(f"📁 Supports {len(DocumentVaultCore.FILE_CATEGORIES)} file categories")
+print(f"📁 Desktop Document Vault Core - Supports {len(DocumentVaultCore.FILE_CATEGORIES)} file categories")

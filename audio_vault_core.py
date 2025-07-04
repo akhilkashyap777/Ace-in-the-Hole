@@ -5,13 +5,6 @@ import threading
 from datetime import datetime
 from kivy.clock import Clock
 
-# Try to import Android-specific modules
-try:
-    from android.storage import app_storage_path
-    ANDROID = True
-except ImportError:
-    ANDROID = False
-
 # Try to import audio metadata libraries
 try:
     import mutagen
@@ -50,7 +43,7 @@ class AudioVaultCore:
         '.awb': 'AWB Audio'
     }
     
-    POPULAR_FORMATS = ['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg']
+    POPULAR_FORMATS = ('.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg')
     
     def __init__(self, app_instance):
         self.app = app_instance
@@ -60,10 +53,6 @@ class AudioVaultCore:
         
         self.ensure_directories()
         self.metadata = self.load_metadata()
-        
-        print("🎵 Audio Vault Core initialized")
-        print(f"📁 Vault directory: {self.vault_dir}")
-        print(f"🔧 Metadata extraction: {'✅ Available' if MUTAGEN_AVAILABLE else '❌ Disabled'}")
     
     def get_vault_directory(self):
         """Get the audio vault directory"""
@@ -77,13 +66,7 @@ class AudioVaultCore:
                 # Fall through to fallback
         
         # Fallback for testing/development
-        if ANDROID:
-            try:
-                return os.path.join(app_storage_path(), 'vault_audio')
-            except:
-                return os.path.join('/sdcard', 'vault_audio')
-        else:
-            return os.path.join(os.getcwd(), 'vault_audio')
+        return os.path.join(os.getcwd(), 'vault_audio')
     
     def ensure_directories(self):
         """Create necessary directories"""
@@ -155,37 +138,40 @@ class AudioVaultCore:
                 tags = audio_file.tags
                 
                 # Common tag mappings (but we'll store everything)
-                common_mappings = {
-                    'TIT2': 'title',           # ID3v2
-                    'TPE1': 'artist',          # ID3v2
-                    'TALB': 'album',           # ID3v2
-                    'TYER': 'year',            # ID3v2
-                    'TCON': 'genre',           # ID3v2
-                    'TRCK': 'track',           # ID3v2
-                    'TPE2': 'album_artist',    # ID3v2
-                    'TPOS': 'disc',            # ID3v2
-                    'TLEN': 'length',          # ID3v2
+                common_mappings = (
+                    ('TIT2', 'title'),           # ID3v2
+                    ('TPE1', 'artist'),          # ID3v2
+                    ('TALB', 'album'),           # ID3v2
+                    ('TYER', 'year'),            # ID3v2
+                    ('TCON', 'genre'),           # ID3v2
+                    ('TRCK', 'track'),           # ID3v2
+                    ('TPE2', 'album_artist'),    # ID3v2
+                    ('TPOS', 'disc'),            # ID3v2
+                    ('TLEN', 'length'),          # ID3v2
                     
                     # Vorbis/FLAC tags
-                    'TITLE': 'title',
-                    'ARTIST': 'artist', 
-                    'ALBUM': 'album',
-                    'DATE': 'date',
-                    'GENRE': 'genre',
-                    'TRACKNUMBER': 'track',
-                    'ALBUMARTIST': 'album_artist',
-                    'DISCNUMBER': 'disc',
+                    ('TITLE', 'title'),
+                    ('ARTIST', 'artist'), 
+                    ('ALBUM', 'album'),
+                    ('DATE', 'date'),
+                    ('GENRE', 'genre'),
+                    ('TRACKNUMBER', 'track'),
+                    ('ALBUMARTIST', 'album_artist'),
+                    ('DISCNUMBER', 'disc'),
                     
                     # MP4 tags
-                    '©nam': 'title',
-                    '©ART': 'artist',
-                    '©alb': 'album',
-                    '©day': 'date',
-                    '©gen': 'genre',
-                    'trkn': 'track',
-                    'aART': 'album_artist',
-                    'disk': 'disc',
-                }
+                    ('©nam', 'title'),
+                    ('©ART', 'artist'),
+                    ('©alb', 'album'),
+                    ('©day', 'date'),
+                    ('©gen', 'genre'),
+                    ('trkn', 'track'),
+                    ('aART', 'album_artist'),
+                    ('disk', 'disc'),
+                )
+                
+                # Convert to dict for faster lookup
+                mapping_dict = dict(common_mappings)
                 
                 # Extract all tags dynamically
                 for key, value in tags.items():
@@ -197,7 +183,7 @@ class AudioVaultCore:
                             str_value = str(value)
                         
                         # Use common mapping if available, otherwise use raw key
-                        field_name = common_mappings.get(key, key)
+                        field_name = mapping_dict.get(key, key)
                         metadata['extracted_fields'][field_name] = str_value
                         
                         # Also store raw key for completeness
@@ -249,7 +235,6 @@ class AudioVaultCore:
             # Vorbis comment with embedded picture
             elif 'METADATA_BLOCK_PICTURE' in tags:
                 import base64
-                import struct
                 try:
                     pic_data = base64.b64decode(tags['METADATA_BLOCK_PICTURE'][0])
                     # Skip FLAC picture block header (32 bytes)
@@ -264,8 +249,6 @@ class AudioVaultCore:
                 
                 with open(thumbnail_path, 'wb') as f:
                     f.write(artwork_data)
-                
-                print(f"🎨 Album art extracted: {thumbnail_filename}")
                 
         except Exception as e:
             print(f"⚠️ Could not extract album art: {e}")
@@ -311,14 +294,12 @@ class AudioVaultCore:
                     'added_date': datetime.now().isoformat(),
                     'metadata': metadata,
                     'thumbnail_path': thumbnail_path,
-                    'tags': []  # User can add custom tags later
+                    'tags': ()  # Use tuple instead of list
                 }
                 
                 # Add to metadata
                 self.metadata[audio_id] = file_record
                 self.save_metadata()
-                
-                print(f"✅ Audio file added: {original_filename}")
                 
                 result = {
                     'success': True,
@@ -436,7 +417,6 @@ class AudioVaultCore:
                     del self.metadata[audio_id]
                     self.save_metadata()
                     
-                    print(f"✅ Audio file moved to recycle bin: {record['original_filename']}")
                     return {'success': True, 'recycled': True}
                 else:
                     return {'success': False, 'error': recycle_result['error']}
@@ -470,7 +450,6 @@ class AudioVaultCore:
             # Copy file to destination
             shutil.copy2(vault_path, destination_path)
             
-            print(f"✅ Audio file exported: {record['original_filename']} -> {destination_path}")
             return {'success': True, 'exported_path': destination_path}
             
         except Exception as e:
@@ -483,7 +462,8 @@ class AudioVaultCore:
             if audio_id not in self.metadata:
                 return {'success': False, 'error': 'Audio file not found'}
             
-            self.metadata[audio_id]['tags'] = custom_tags
+            # Convert to tuple for immutability
+            self.metadata[audio_id]['tags'] = tuple(custom_tags)
             self.save_metadata()
             
             return {'success': True}
@@ -558,5 +538,3 @@ class AudioVaultCore:
                 json.dump(self.metadata, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"❌ Error saving metadata: {e}")
-            
-print(f"🎵 Supports {len(AudioVaultCore.AUDIO_EXTENSIONS)} audio formats")

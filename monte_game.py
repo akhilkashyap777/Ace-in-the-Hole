@@ -391,14 +391,11 @@ class Card:
         return False
         
     def draw(self, screen):
-        """✅ OPTIMIZATION: Use pre-rendered surfaces"""
-        # Select appropriate face
         if self.is_face_up:
             face_key = 'winner' if self.is_winner else 'loser'
         else:
             face_key = 'back'
         
-        # Blit pre-rendered surface
         screen.blit(self._face_cache[face_key], (int(self.x), int(self.y)))
     
     def move_to(self, target_x, target_y):

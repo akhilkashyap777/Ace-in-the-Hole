@@ -14,7 +14,6 @@ from kivy.metrics import dp
 from kivy.core.image import Image as CoreImage
 from kivy.graphics.texture import Texture
 from PIL import Image as PILImage
-from photo_camera_module import PhotoCameraModule
 
 class PhotoGalleryWidget(MDBoxLayout):
     
@@ -23,8 +22,6 @@ class PhotoGalleryWidget(MDBoxLayout):
         self.vault_core = photo_vault_core
         self.selected_photo = None
         self.photo_widgets = []
-        
-        self.camera_module = PhotoCameraModule(self)
         
         self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
@@ -73,9 +70,6 @@ class PhotoGalleryWidget(MDBoxLayout):
         actions_row.add_widget(self.add_btn)
         
         header.add_widget(actions_row)
-        
-        camera_buttons = self.camera_module.build_camera_buttons()
-        header.add_widget(camera_buttons)
         
         self.add_widget(header)
     

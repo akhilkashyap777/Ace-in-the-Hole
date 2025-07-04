@@ -1,4 +1,4 @@
-# complete_contact_integration.py - Complete Contact Integration
+# complete_contact_integration.py - Complete Contact Integration (Desktop Only)
 """
 Complete integration file for adding contact management and calling functionality
 to your existing document vault system.
@@ -15,17 +15,10 @@ from contact_manager import integrate_contact_management
 from contact_ui_integration import integrate_contact_ui_enhancements
 
 def setup_contact_system(vault_app):
-    """
-    Complete setup function for contact system
-    Call this after your vault app is initialized
-    """
-    
-    print("🔧 Setting up complete contact system...")
     
     try:
         # Step 1: Integrate contact management core
         contact_manager = integrate_contact_management(vault_app)
-        print("✅ Contact management core integrated")
         
         # Step 2: Enhance UI for contacts (import here to avoid circular imports)
         try:
@@ -37,21 +30,9 @@ def setup_contact_system(vault_app):
         
         # Step 3: Update document vault core to mark contacts as active
         activate_contact_category(vault_app.document_vault)
-        print("✅ Contact category activated")
         
         # Step 4: Add contact-specific methods to vault app
         add_contact_methods(vault_app)
-        print("✅ Contact methods added to vault app")
-        
-        print("🎉 Contact system setup complete!")
-        print("📞 Features enabled:")
-        print("   • Contact parsing (.vcf, .contact files)")
-        print("   • Android calling integration") 
-        print("   • Contact preview with phone/email counts")
-        print("   • Quick call buttons")
-        print("   • Email and maps integration")
-        print("   • Secure contact storage")
-        print("   • Export/import functionality")
         
         return contact_manager
         
@@ -71,7 +52,6 @@ def activate_contact_category(document_vault):
     
     # Verify contact category exists and is active
     if 'contacts' in document_vault.FILE_CATEGORIES:
-        print("📞 Contact category found and active")
         
         # Ensure contact directory exists
         contact_dir = os.path.join(document_vault.vault_dir, 'contacts')
@@ -157,9 +137,9 @@ def verify_contact_integration(vault_app):
         'contact_manager': False,
         'document_vault': False,
         'contact_category': False,
-        'android_calling': False,
+        'desktop_integration': False,
         'ui_integration': False,
-        'permissions': False
+        'permissions': True  # Always true on desktop
     }
     
     # Check contact manager
@@ -174,13 +154,8 @@ def verify_contact_integration(vault_app):
         if 'contacts' in vault_app.document_vault.FILE_CATEGORIES:
             status['contact_category'] = True
     
-    # Check Android calling capability
-    try:
-        from android.permissions import Permission
-        from jnius import autoclass
-        status['android_calling'] = True
-    except ImportError:
-        status['android_calling'] = False
+    # Desktop integration is always available
+    status['desktop_integration'] = True
     
     # Check UI integration
     try:
@@ -206,7 +181,7 @@ def print_contact_integration_status(vault_app):
     
     # Additional info
     if hasattr(vault_app, 'contact_manager'):
-        print(f"\n📞 Platform: {'Android (Calling Enabled)' if status['android_calling'] else 'Desktop (Calling Disabled)'}")
+        print(f"\n📞 Platform: Desktop (External App Integration)")
     
     if hasattr(vault_app, 'document_vault'):
         contact_dir = os.path.join(vault_app.document_vault.vault_dir, 'contacts')
@@ -267,12 +242,8 @@ END:VCARD"""
         stats = vault_app.get_contact_stats()
         print(f"✅ Contact stats: {stats['total_contacts']} contacts found")
         
-        # Test 4: Android calling (mock test)
-        try:
-            from jnius import autoclass
-            print("✅ Android calling: Available (jnius loaded)")
-        except ImportError:
-            print("ℹ️ Android calling: Not available (Desktop mode)")
+        # Test 4: Desktop integration (always available)
+        print("✅ Desktop integration: Available (External apps)")
         
         print("✅ Contact functionality test completed")
         return True
@@ -317,7 +288,7 @@ class VaultApp(App):
 '''
 
 if __name__ == "__main__":
-    print("📞 Complete Contact Integration for Document Vault")
-    print("=" * 50)
+    print("📞 Complete Contact Integration for Document Vault (Desktop)")
+    print("=" * 60)
     print(__doc__)
     print(USAGE_EXAMPLE)

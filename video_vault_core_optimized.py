@@ -7,15 +7,13 @@ import weakref
 from kivy.clock import Clock
 from PIL import Image as PILImage
 
-try:
-    from android.permissions import request_permissions, Permission
-    from plyer import filechooser
-    from android.storage import primary_external_storage_path, app_storage_path
-    ANDROID = True
-except ImportError:
-    ANDROID = False
-    import tkinter as tk
-    from tkinter import filedialog
+# REMOVED: Android imports completely
+# No more android.permissions, plyer, android.storage
+ANDROID = False  # Always False for desktop-only version
+
+# Desktop-only imports
+import tkinter as tk
+from tkinter import filedialog
 
 try:
     import imageio
@@ -207,16 +205,13 @@ class VideoVaultCore:
         return cleaned
     
     def get_vault_directory(self):
+        """Get vault directory - Desktop only"""
+        # SIMPLIFIED: Desktop-only logic
         if hasattr(self.app, 'secure_storage'):
             return self.app.secure_storage.get_vault_directory('videos')
         
-        if ANDROID:
-            try:
-                return os.path.join(app_storage_path(), 'vault_videos')
-            except:
-                return os.path.join('/sdcard', 'vault_videos')
-        else:
-            return os.path.join(os.getcwd(), 'vault_videos')
+        # Default desktop vault directory
+        return os.path.join(os.getcwd(), 'vault_videos')
     
     def ensure_vault_directory(self):
         try:
@@ -228,16 +223,8 @@ class VideoVaultCore:
         except Exception as e:
             print(f"Error creating vault directory: {e}")
     
-    def request_permissions(self):
-        if ANDROID:
-            try:
-                request_permissions([
-                    Permission.READ_EXTERNAL_STORAGE,
-                    Permission.WRITE_EXTERNAL_STORAGE,
-                    Permission.CAMERA
-                ])
-            except Exception as e:
-                print(f"Permission error: {e}")
+    # REMOVED: request_permissions method completely
+    # Not needed on desktop platforms
     
     def load_video_info_cache(self):
         try:

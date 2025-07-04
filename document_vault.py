@@ -60,8 +60,6 @@ print("🔧 Ready for integration with main vault app")
 DEBUG_MODE = True
 
 if DEBUG_MODE:
-    print("🔧 DEBUG MODE ENABLED - Verbose logging active")
-    print("📂 Supported file categories:")
     
     # Print supported categories
     for category, config in DocumentVaultCore.FILE_CATEGORIES.items():
@@ -73,10 +71,6 @@ if DEBUG_MODE:
         
         print(f"  {config['icon']} {config['display_name']}: {ext_sample}")
     
-    print(f"  📁 Other Files: Any unknown file type")
-    print(f"📁 Documents will be stored in secure app-private directories")
-    print(f"🚫 Excluded media types: Images, videos, audio (handled by other vaults)")
-    print(f"👁️ View-only mode: Text files show preview, others show metadata")
 
 # Quick integration test function
 def test_document_vault_integration():

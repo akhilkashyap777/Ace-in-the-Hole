@@ -116,8 +116,6 @@ def patch_document_vault_ui(document_vault_ui_class):
     document_vault_ui_class.show_contact_view = show_contact_view
     document_vault_ui_class.export_contact_from_view = export_contact_from_view
     
-    print("DocumentVaultUI patched for contact support")
-
 
 def create_enhanced_contact_widget(self, document):
     doc_card = MDCard(
@@ -241,8 +239,6 @@ def integrate_contact_ui_enhancements(document_vault_ui_class):
     
     document_vault_ui_class.create_document_widget = enhanced_create_document_widget
     
-    print("Contact UI enhancements integrated")
-    print("Contact files now show enhanced preview with quick call buttons")
 
 
 INTEGRATION_INSTRUCTIONS = """

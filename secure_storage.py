@@ -3,20 +3,6 @@ import platform
 import threading
 import time
 
-# Try to import Android-specific modules
-try:
-    from android.storage import app_storage_path
-    from jnius import autoclass
-    ANDROID = True
-    
-    # Android app context for private directories
-    PythonActivity = autoclass('org.kivy.android.PythonActivity')
-    Context = autoclass('android.content.Context')
-    File = autoclass('java.io.File')
-    
-except ImportError:
-    ANDROID = False
-
 class SecureStorage:
     """
     Cross-platform secure storage for app-private directories
@@ -54,9 +40,7 @@ class SecureStorage:
     def get_platform_name(self):
         """✅ OPTIMIZATION: Cache platform detection"""
         if self._platform_cache is None:
-            if ANDROID:
-                self._platform_cache = "Android"
-            elif platform.system() == "Windows":
+            if platform.system() == "Windows":
                 self._platform_cache = "Windows"
             elif platform.system() == "Darwin":
                 self._platform_cache = "macOS"
@@ -70,9 +54,7 @@ class SecureStorage:
     def get_secure_base_directory(self):
         """✅ OPTIMIZATION: Cache base directory calculation"""
         if self._base_dir_cache is None:
-            if ANDROID:
-                self._base_dir_cache = self._get_android_private_directory()
-            elif platform.system() == "Windows":
+            if platform.system() == "Windows":
                 self._base_dir_cache = self._get_windows_private_directory()
             elif platform.system() == "Darwin":  # macOS
                 self._base_dir_cache = self._get_macos_private_directory()
@@ -84,30 +66,6 @@ class SecureStorage:
                 self._base_dir_cache = os.path.join(os.getcwd(), f".{self.app_name}_data")
         
         return self._base_dir_cache
-    
-    def _get_android_private_directory(self):
-        """Get Android app-private internal storage directory"""
-        try:
-            # Method 1: Use app's private files directory (most secure)
-            activity = PythonActivity.mActivity
-            context = activity.getApplicationContext()
-            
-            # Get app's private files directory
-            files_dir = context.getFilesDir()
-            private_dir = files_dir.getAbsolutePath()
-            
-            print(f"📱 Android private storage: {private_dir}")
-            return os.path.join(private_dir, self.app_name)
-            
-        except Exception as e:
-            print(f"⚠️ Android private dir error: {e}")
-            
-            try:
-                # Method 2: Fallback to Kivy's app storage
-                return os.path.join(app_storage_path(), self.app_name)
-            except:
-                # Method 3: Last resort - internal storage
-                return f"/data/data/org.kivy.{self.app_name.lower()}/files"
     
     def _get_windows_private_directory(self):
         """Get Windows app-private directory"""
@@ -226,23 +184,22 @@ class SecureStorage:
     def _set_secure_permissions_if_needed(self, path):
         """✅ OPTIMIZATION: Only set permissions if they're incorrect"""
         try:
-            if not ANDROID:  # Android handles permissions differently
-                # Check current permissions first
-                stat_info = os.stat(path)
-                current_perms = oct(stat_info.st_mode)[-3:]
+            # Check current permissions first
+            stat_info = os.stat(path)
+            current_perms = oct(stat_info.st_mode)[-3:]
+            
+            if current_perms != "700":
+                # Set to 700 (owner only: read, write, execute)
+                os.chmod(path, 0o700)
                 
-                if current_perms != "700":
-                    # Set to 700 (owner only: read, write, execute)
-                    os.chmod(path, 0o700)
-                    
-                    # On Windows, also hide the directory
-                    if platform.system() == "Windows":
-                        try:
-                            import ctypes
-                            # Set hidden attribute on Windows
-                            ctypes.windll.kernel32.SetFileAttributesW(path, 0x02)
-                        except:
-                            pass
+                # On Windows, also hide the directory
+                if platform.system() == "Windows":
+                    try:
+                        import ctypes
+                        # Set hidden attribute on Windows
+                        ctypes.windll.kernel32.SetFileAttributesW(path, 0x02)
+                    except:
+                        pass
                         
         except Exception as e:
             print(f"⚠️ Warning: Could not check/set secure permissions on {path}: {e}")
@@ -349,7 +306,7 @@ class SecureStorage:
             "vault_directory": self.vault_dir,
             "recycle_directory": self.recycle_dir,
             "config_directory": self.config_dir,
-            "permissions": "0o700 (owner only)" if not ANDROID else "Android app-private",
+            "permissions": "0o700 (owner only)",
             "hidden": platform.system() == "Windows"
         }
         
@@ -408,8 +365,8 @@ class SecureStorage:
         if self.is_user_accessible():
             issues.append("Storage location is easily accessible to users")
         
-        # Check permissions (non-Android only)
-        if not ANDROID and os.path.exists(self.base_dir):
+        # Check permissions
+        if os.path.exists(self.base_dir):
             try:
                 stat_info = os.stat(self.base_dir)
                 permissions = oct(stat_info.st_mode)[-3:]
@@ -437,7 +394,7 @@ class SecureStorage:
         if self.is_user_accessible():
             recommendations.append("Consider using app-private storage location")
         
-        if not ANDROID and platform.system() != "Windows":
+        if platform.system() != "Windows":
             recommendations.append("Ensure file permissions are set to 700 (owner only)")
         
         recommendations.extend([

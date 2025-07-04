@@ -9,20 +9,13 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.clock import Clock
 from kivy.metrics import dp
 
-# Import Android/Desktop specific modules for file selection
-try:
-    from video_vault_core import ANDROID
-    if not ANDROID:
-        import tkinter as tk
-        from tkinter import filedialog
-    else:
-        try:
-            from plyer import filechooser
-            from android.storage import primary_external_storage_path
-        except ImportError:
-            pass
-except ImportError:
-    ANDROID = False
+# REMOVED: Android imports completely
+# Desktop-only imports
+import tkinter as tk
+from tkinter import filedialog
+
+# SIMPLIFIED: Desktop-only platform detection
+ANDROID = False  # Always False for desktop-only version
 
 def show_import_results_dialog(imported_files, moved_files):
     """Show import results popup with BlueGray theme"""
@@ -157,17 +150,11 @@ Continue?"""
     popup.open()
 
 def show_fallback_file_picker(callback):
-    """Fallback file picker using Kivy's FileChooser with BlueGray theme"""
+    """Fallback file picker using Kivy's FileChooser - Desktop optimized"""
     content = MDBoxLayout(orientation='vertical', spacing=10, padding=10)
     
-    # File chooser
-    if ANDROID:
-        try:
-            start_path = primary_external_storage_path()
-        except:
-            start_path = '/sdcard'
-    else:
-        start_path = os.path.expanduser('~')
+    # SIMPLIFIED: Desktop-only start path
+    start_path = os.path.expanduser('~')  # User home directory
     
     filechooser = FileChooserIconView(
         path=start_path,
@@ -200,7 +187,7 @@ def show_fallback_file_picker(callback):
     content.add_widget(button_layout)
     
     popup = Popup(
-        title='Select Videos from Gallery',
+        title='Select Videos from Computer',  # UPDATED: More desktop-appropriate
         content=content,
         size_hint=(0.9, 0.9),
         auto_dismiss=False
@@ -444,7 +431,7 @@ def show_export_dialog(video_path, export_callback):
     content = MDBoxLayout(orientation='vertical', spacing=15, padding=15)
     
     info_label = MDLabel(
-        text=f"Export '{original_name}' to device storage?\n\nYou will be asked to choose the destination folder.",
+        text=f"Export '{original_name}' to your computer?\n\nYou will be asked to choose the destination folder.",
         text_color="white",
         halign='center',
         font_style="Body1"

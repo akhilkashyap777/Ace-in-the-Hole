@@ -5,44 +5,21 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
+import webbrowser
+import tkinter as tk
 
-# Cross-platform imports
-try:
-    from android.permissions import request_permissions, Permission
-    from jnius import autoclass, cast
-    ANDROID = True
-    print("📱 Android platform detected - Call functionality enabled")
-except ImportError:
-    ANDROID = False
-    print("🖥️ Desktop platform detected - Call functionality disabled")
+# Desktop-only version - All Android code removed
+ANDROID = False
 
 class ContactManager:
-    """
-    Contact Manager for parsing and handling contact files
-    Integrates with the document vault system
-    """
     
     def __init__(self, vault_app):
         self.app = vault_app
-        self.request_call_permissions()
-    
-    def request_call_permissions(self):
-        """Request CALL_PHONE permission on Android"""
-        if ANDROID:
-            try:
-                request_permissions([
-                    Permission.CALL_PHONE,
-                    Permission.READ_PHONE_STATE
-                ])
-                print("📞 Call permissions requested")
-            except Exception as e:
-                print(f"⚠️ Permission request error: {e}")
+        # No permissions needed on desktop
+        print("📞 Desktop mode - no permissions required")
     
     def parse_vcf_contact(self, file_path):
-        """
-        Parse a .vcf (vCard) file and extract contact information
-        Returns structured contact data
-        """
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -233,13 +210,8 @@ class ContactManager:
     
     def make_phone_call(self, phone_number):
         """
-        Make a phone call on Android
-        Shows confirmation dialog first for security
+        Open phone app or show phone number (Desktop version)
         """
-        if not ANDROID:
-            self.show_desktop_call_message(phone_number)
-            return
-        
         # Clean phone number
         clean_number = re.sub(r'[^\d+]', '', phone_number)
         
@@ -247,74 +219,18 @@ class ContactManager:
             self.show_error_popup("Invalid phone number")
             return
         
-        # Show confirmation dialog
-        self.show_call_confirmation(clean_number)
-    
-    def show_call_confirmation(self, phone_number):
-        """Show confirmation dialog before making call"""
-        content = BoxLayout(orientation='vertical', spacing=10)
-        
-        message = Label(
-            text=f"📞 Make a call to:\n\n{phone_number}\n\n⚠️ This will use your phone's regular calling network.\n\nProceed with call?",
-            halign='center'
-        )
-        message.bind(size=message.setter('text_size'))
-        content.add_widget(message)
-        
-        button_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50))
-        
-        call_btn = Button(text='📞 Call Now', background_color=(0.2, 0.8, 0.2, 1))
-        cancel_btn = Button(text='❌ Cancel')
-        
-        button_layout.add_widget(call_btn)
-        button_layout.add_widget(cancel_btn)
-        content.add_widget(button_layout)
-        
-        popup = Popup(
-            title='Confirm Phone Call',
-            content=content,
-            size_hint=(0.8, 0.5),
-            auto_dismiss=False
-        )
-        
-        def make_call(instance):
-            popup.dismiss()
-            self.execute_android_call(phone_number)
-        
-        def cancel_call(instance):
-            popup.dismiss()
-        
-        call_btn.bind(on_press=make_call)
-        cancel_btn.bind(on_press=cancel_call)
-        
-        popup.open()
-    
-    def execute_android_call(self, phone_number):
-        """Execute the actual phone call on Android"""
+        # Try to open with tel: protocol, fallback to showing number
         try:
-            # Import Android classes
-            Intent = autoclass('android.content.Intent')
-            Uri = autoclass('android.net.Uri')
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            
-            # Create call intent
-            intent = Intent(Intent.ACTION_CALL)
-            intent.setData(Uri.parse(f"tel:{phone_number}"))
-            
-            # Get current activity and start call
-            currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-            currentActivity.startActivity(intent)
-            
-            print(f"📞 Call initiated to {phone_number}")
-            
+            webbrowser.open(f"tel:{phone_number}")
+            self.show_toast(f"Opening phone app for: {phone_number}")
         except Exception as e:
-            print(f"❌ Call failed: {e}")
-            self.show_error_popup(f"Call failed: {str(e)}\n\nPlease check:\n• Phone permissions\n• Network connection\n• Valid phone number")
+            print(f"Could not open phone app: {e}")
+            self.show_desktop_call_message(phone_number)
     
     def show_desktop_call_message(self, phone_number):
         """Show message for desktop users"""
         content = Label(
-            text=f"📞 Call: {phone_number}\n\nCalling is only available on Android devices.\n\nOn desktop, you can:\n• Copy the number to your phone\n• Use a VoIP app\n• Call from another device"
+            text=f"📞 Call: {phone_number}\n\nThis is a desktop application.\n\nTo make the call:\n• Use your phone to dial this number\n• Copy the number and use a VoIP app\n• Use Skype or other calling software"
         )
         
         popup = Popup(
@@ -580,70 +496,37 @@ class ContactManager:
         return main_layout
     
     def copy_to_clipboard(self, text):
-        """Copy text to clipboard (cross-platform)"""
+        """Copy text to clipboard (Desktop only)"""
         try:
-            if ANDROID:
-                # Android clipboard
-                ClipboardManager = autoclass('android.content.ClipboardManager')
-                ClipData = autoclass('android.content.ClipData')
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                
-                context = PythonActivity.mActivity
-                clipboard = context.getSystemService(context.CLIPBOARD_SERVICE)
-                clip = ClipData.newPlainText("contact_data", text)
-                clipboard.setPrimaryClip(clip)
-            else:
-                # Desktop clipboard
-                import tkinter as tk
-                root = tk.Tk()
-                root.withdraw()
-                root.clipboard_clear()
-                root.clipboard_append(text)
-                root.update()
-                root.destroy()
+            root = tk.Tk()
+            root.withdraw()
+            root.clipboard_clear()
+            root.clipboard_append(text)
+            root.update()
+            root.destroy()
             
             self.show_toast(f"Copied: {text}")
         except Exception as e:
             print(f"Clipboard error: {e}")
+            self.show_error_popup(f"Could not copy to clipboard: {e}")
     
     def send_email(self, email_address):
-        """Open email app with address"""
+        """Open email app with address (Desktop)"""
         try:
-            if ANDROID:
-                Intent = autoclass('android.content.Intent')
-                Uri = autoclass('android.net.Uri')
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                
-                intent = Intent(Intent.ACTION_SENDTO)
-                intent.setData(Uri.parse(f"mailto:{email_address}"))
-                
-                currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-                currentActivity.startActivity(intent)
-            else:
-                import webbrowser
-                webbrowser.open(f"mailto:{email_address}")
+            webbrowser.open(f"mailto:{email_address}")
+            self.show_toast(f"Opening email for: {email_address}")
         except Exception as e:
             print(f"Email error: {e}")
+            self.show_error_popup(f"Could not open email app: {e}")
     
     def open_maps(self, address):
-        """Open maps app with address"""
+        """Open maps in web browser (Desktop)"""
         try:
-            if ANDROID:
-                Intent = autoclass('android.content.Intent')
-                Uri = autoclass('android.net.Uri')
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                
-                # Create maps intent
-                intent = Intent(Intent.ACTION_VIEW)
-                intent.setData(Uri.parse(f"geo:0,0?q={address}"))
-                
-                currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-                currentActivity.startActivity(intent)
-            else:
-                import webbrowser
-                webbrowser.open(f"https://maps.google.com/maps?q={address}")
+            webbrowser.open(f"https://maps.google.com/maps?q={address}")
+            self.show_toast(f"Opening maps for: {address}")
         except Exception as e:
             print(f"Maps error: {e}")
+            self.show_error_popup(f"Could not open maps: {e}")
     
     def export_contact(self, file_path, contact_name):
         """Export contact using existing document vault export functionality"""
@@ -669,7 +552,6 @@ class ContactManager:
         popup.open()
     
     def show_toast(self, message):
-        """Show a temporary toast message"""
         content = Label(text=message)
         popup = Popup(
             title='',
@@ -678,20 +560,14 @@ class ContactManager:
             auto_dismiss=True
         )
         popup.open()
-        # Auto dismiss after 2 seconds
         from kivy.clock import Clock
         Clock.schedule_once(lambda dt: popup.dismiss(), 2)
 
 
-# Integration function to add contact management to document vault
 def integrate_contact_management(vault_app):
-    """
-    Integrate contact management into the existing document vault
-    SIMPLIFIED VERSION - No more runtime patching of get_document_preview
-    """
-    # Create contact manager instance
+
     vault_app.contact_manager = ContactManager(vault_app)
     
-    print("📞 Android calling enabled" if ANDROID else "🖥️ Desktop mode - calling disabled")
+    print("🖥️ Desktop mode - External app integration enabled")
     
     return vault_app.contact_manager
