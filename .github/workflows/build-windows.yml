@@ -2,9 +2,9 @@ name: Build Windows Executable
 
 on:
   push:
-    branches: [ imports-removed-backup ]
+    branches: [ android-removed ]
   pull_request:
-    branches: [ imports-removed-backup ]
+    branches: [ android-removed ]
   workflow_dispatch:
 
 jobs:
