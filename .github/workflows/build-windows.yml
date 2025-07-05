@@ -43,32 +43,32 @@ jobs:
 
       - name: Build Windows executable
         run: |
-          python -m nuitka --standalone ^
-          --lto=yes ^
-          --no-deployment-payload ^
-          --verbose ^             # Enable general Nuitka verbosity
-          --show-scons ^          # Show SCons (C/C++ compiler backend) commands
-          --show-modules ^        # Show a summary of included modules
-          --show-progress ^       # Show progress during compilation
-          --show-memory ^         # Show memory usage statistics
-          --windows-disable-console ^
-          --assume-yes-for-downloads ^
-          --output-filename=AceInTheHole-Windows.exe ^
-          --include-package=kivymd ^
-          --include-package=kivy ^
-          --include-package=PIL ^
-          --include-package=requests ^
-          --include-package=qrcode ^
-          --include-package=bcrypt ^
-          --include-package=cryptography ^
-          --include-package=pygame ^
-          --include-package=plyer ^
-          --include-package=cv2 ^
-          --include-package=openpyxl ^
-          --include-package=docx2txt ^
-          --include-package=mutagen ^
-          --include-package=imageio ^
-          --include-package=psutil ^
+          python -m nuitka --standalone `
+          --lto=yes `
+          --no-deployment-payload `
+          --verbose `             # Enable general Nuitka verbosity
+          --show-scons `          # Show SCons (C/C++ compiler backend) commands
+          --show-modules `        # Show a summary of included modules
+          --show-progress `       # Show progress during compilation
+          --show-memory `         # Show memory usage statistics
+          --windows-disable-console `
+          --assume-yes-for-downloads `
+          --output-filename=AceInTheHole-Windows.exe `
+          --include-package=kivymd `
+          --include-package=kivy `
+          --include-package=PIL `
+          --include-package=requests `
+          --include-package=qrcode `
+          --include-package=bcrypt `
+          --include-package=cryptography `
+          --include-package=pygame `
+          --include-package=plyer `
+          --include-package=cv2 `
+          --include-package=openpyxl `
+          --include-package=docx2txt `
+          --include-package=mutagen `
+          --include-package=imageio `
+          --include-package=psutil `
           main.py
 
       - name: Upload Windows executable
