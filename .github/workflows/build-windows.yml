@@ -41,18 +41,32 @@ jobs:
           pip install imageio_ffmpeg
           pip install psutil
 
+      - name: Download and setup UPX
+        run: |
+          $upx_version = "4.2.1" # Check for the latest UPX version on GitHub releases
+          $upx_zip = "upx-$upx_version-win64.zip"
+          $upx_url = "https://github.com/upx/upx/releases/download/v$upx_version/$upx_zip"
+          Write-Host "Downloading UPX from $upx_url"
+          Invoke-WebRequest -Uri $upx_url -OutFile $upx_zip
+          Expand-Archive -Path $upx_zip -DestinationPath . -Force
+          # Find the actual extracted folder name (e.g., upx-4.2.1-win64)
+          $upx_folder = (Get-ChildItem -Path . -Directory | Where-Object {$_.Name -like "upx-*-win64"}).Name
+          Write-Host "UPX extracted to folder: $upx_folder"
+          # Add UPX to PATH for this step or reference it directly
+          $env:Path += ";$pwd\$upx_folder"
+          upx --version # Verify UPX is working
+
       - name: Build Windows executable
         run: |
           python -m nuitka --standalone `
           --lto=yes `
-          --no-deployment-payload `
-          --verbose `
-          --show-scons `
-          --show-modules `
-          --show-progress `
-          --show-memory `
+          --verbose `             # Enable general Nuitka verbosity
+          --show-modules `        # Show a summary of included modules
+          --show-memory `         # Show memory usage statistics
           --windows-disable-console `
           --assume-yes-for-downloads `
+          --plugin-enable=upx `   # Enable UPX plugin
+          --upx-binary=upx.exe `  # Tell Nuitka to use 'upx.exe' from PATH (set above)
           --output-filename=AceInTheHole-Windows.exe `
           --include-package=kivymd `
           --include-package=kivy `
@@ -63,7 +77,7 @@ jobs:
           --include-package=cryptography `
           --include-package=pygame `
           --include-package=plyer `
-          --include-package=cv2 `
+          --include-package=opencv-python `
           --include-package=openpyxl `
           --include-package=docx2txt `
           --include-package=mutagen `
