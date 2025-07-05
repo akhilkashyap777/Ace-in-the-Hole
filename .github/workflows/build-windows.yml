@@ -94,24 +94,31 @@ jobs:
           exe = EXE(
               pyz,
               a.scripts,
-              a.binaries,
-              a.zipfiles,
-              a.datas,
               *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins + angle.dep_bins)],
-              [],
+              exclude_binaries=True,
               name='AceInTheHole-Windows',
               debug=False,
               bootloader_ignore_signals=False,
               strip=False,
-              upx=True,
-              upx_exclude=[],
-              runtime_tmpdir=None,
-              console=False,
+              upx=False,
+              console=True,
               disable_windowed_traceback=False,
               argv_emulation=False,
               target_arch=None,
               codesign_identity=None,
               entitlements_file=None,
+          )
+          
+          coll = COLLECT(
+              exe,
+              a.binaries,
+              a.zipfiles,
+              a.datas,
+              *[Tree(p) for p in (sdl2.dep_bins + glew.dep_bins + angle.dep_bins)],
+              strip=False,
+              upx=False,
+              upx_exclude=[],
+              name='AceInTheHole-Windows'
           )
           '@ | Out-File -FilePath "AceInTheHole.spec" -Encoding utf8
           
@@ -123,14 +130,14 @@ jobs:
           
       - name: Verify build
         run: |
-          if (Test-Path "dist/AceInTheHole-Windows.exe") {
-              $size = (Get-Item "dist/AceInTheHole-Windows.exe").Length / 1MB
+          if (Test-Path "dist/AceInTheHole-Windows/AceInTheHole-Windows.exe") {
+              $size = (Get-Item "dist/AceInTheHole-Windows/AceInTheHole-Windows.exe").Length / 1MB
               Write-Host "Executable created successfully!"
               Write-Host "Size: $([math]::Round($size, 2)) MB"
-              Get-ChildItem "dist/" -Name
+              Get-ChildItem "dist/AceInTheHole-Windows/" -Name
           } else {
               Write-Host "Error: Executable not found!"
-              Get-ChildItem "dist/" -Name
+              Get-ChildItem "dist/" -Recurse -Name
               exit 1
           }
           
@@ -138,7 +145,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AceInTheHole-Windows-Executable
-          path: dist/AceInTheHole-Windows.exe
+          path: dist/AceInTheHole-Windows/
           retention-days: 30
           
       - name: Create release info
