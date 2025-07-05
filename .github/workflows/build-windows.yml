@@ -41,6 +41,8 @@ jobs:
           pip install imageio
           pip install imageio_ffmpeg
           pip install psutil
+          # Ensure tkinter is available
+          python -c "import tkinter; print('tkinter available')"
           
       - name: Set OpenGL Backend Environment
         run: |
@@ -66,6 +68,9 @@ jobs:
                   'kivymd',
                   'kivy',
                   'tkinter',
+                  '_tkinter',
+                  'tkinter.filedialog',
+                  'tkinter.messagebox',
                   'PIL',
                   'requests',
                   'qrcode',
