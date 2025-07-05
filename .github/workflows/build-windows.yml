@@ -1,4 +1,4 @@
-name: Build Windows Nuitka Executablee
+name: Build Windows Nuitka Executable
 on:
   push:
     branches: [ android-removed ]
@@ -75,13 +75,31 @@ jobs:
           
       - name: Verify build
         run: |
-          if (Test-Path "main.exe") {
-              $size = (Get-Item "main.exe").Length / 1MB
-              Write-Host "Executable created successfully!"
+          Write-Host "Listing all files and directories:"
+          Get-ChildItem -Recurse -Name
+          
+          # Check for standalone directory first
+          if (Test-Path "main.dist") {
+              Write-Host "Found main.dist directory"
+              $exePath = "main.dist\AceInTheHole-Windows.exe"
+              if (Test-Path $exePath) {
+                  $size = (Get-Item $exePath).Length / 1MB
+                  Write-Host "Executable created successfully in standalone directory!"
+                  Write-Host "Size: $([math]::Round($size, 2)) MB"
+                  Write-Host "Path: $exePath"
+              } else {
+                  Write-Host "Error: Executable not found in main.dist directory!"
+                  Write-Host "Contents of main.dist:"
+                  Get-ChildItem "main.dist" -Name
+                  exit 1
+              }
+          } elseif (Test-Path "AceInTheHole-Windows.exe") {
+              $size = (Get-Item "AceInTheHole-Windows.exe").Length / 1MB
+              Write-Host "Executable created successfully in root directory!"
               Write-Host "Size: $([math]::Round($size, 2)) MB"
-              Rename-Item "main.exe" "AceInTheHole-Windows.exe"
           } else {
-              Write-Host "Error: Executable not found!"
+              Write-Host "Error: Executable not found anywhere!"
+              Write-Host "Current directory contents:"
               Get-ChildItem -Name
               exit 1
           }
@@ -90,5 +108,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AceInTheHole-Nuitka-Executable
-          path: AceInTheHole-Windows.exe
-          retention-days: 30
+          path: |
+            main.dist/
+            AceInTheHole-Windows.exe
