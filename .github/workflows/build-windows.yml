@@ -46,11 +46,11 @@ jobs:
           python -m nuitka --standalone `
           --lto=yes `
           --no-deployment-payload `
-          --verbose `             # Enable general Nuitka verbosity
-          --show-scons `          # Show SCons (C/C++ compiler backend) commands
-          --show-modules `        # Show a summary of included modules
-          --show-progress `       # Show progress during compilation
-          --show-memory `         # Show memory usage statistics
+          --verbose `
+          --show-scons `
+          --show-modules `
+          --show-progress `
+          --show-memory `
           --windows-disable-console `
           --assume-yes-for-downloads `
           --output-filename=AceInTheHole-Windows.exe `
