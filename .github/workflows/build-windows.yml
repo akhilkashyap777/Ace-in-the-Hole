@@ -10,56 +10,82 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install nuitka
-        pip install kivymd
-        pip install kivy
-        pip install pillow
-        pip install requests
-        pip install qrcode
-        pip install bcrypt
-        pip install cryptography
-        pip install pygame
-        pip install plyer
-        pip install opencv-python
-        pip install openpyxl
-        pip install docx2txt
-        pip install mutagen
-        pip install imageio
-        pip install imageio_ffmpeg
-        pip install psutil
-    
-    - name: Build Windows executable
-      run: |
-        python -m nuitka --standalone --include-package=kivymd --include-package=kivy --include-package=PIL --include-package=requests --include-package=qrcode --include-package=bcrypt --include-package=cryptography --include-package=pygame --include-package=plyer --include-package=cv2 --include-package=openpyxl --include-package=docx2txt --include-package=mutagen --include-package=imageio --include-package=psutil --windows-disable-console --output-filename=AceInTheHole-Windows.exe --assume-yes-for-downloads main.py
-    
-    - name: Upload Windows executable
-      uses: actions/upload-artifact@v4
-      with:
-        name: AceInTheHole-Windows-Executable
-        path: main.dist/
-        retention-days: 30
-    
-    - name: Create release info
-      run: |
-        echo "Build completed successfully!" > build-info.txt
-        echo "Download the AceInTheHole-Windows-Executable artifact" >> build-info.txt
-        echo "Extract and run AceInTheHole-Windows.exe" >> build-info.txt
-    
-    - name: Upload build info
-      uses: actions/upload-artifact@v4
-      with:
-        name: Build-Instructions
-        path: build-info.txt
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install nuitka
+          pip install kivymd
+          pip install kivy
+          pip install pillow
+          pip install requests
+          pip install qrcode
+          pip install bcrypt
+          pip install cryptography
+          pip install pygame
+          pip install plyer
+          pip install opencv-python
+          pip install openpyxl
+          pip install docx2txt
+          pip install mutagen
+          pip install imageio
+          pip install imageio_ffmpeg
+          pip install psutil
+
+      - name: Build Windows executable
+        run: |
+          python -m nuitka --standalone ^
+          --lto=yes ^
+          --no-deployment-payload ^
+          --verbose ^             # Enable general Nuitka verbosity
+          --show-scons ^          # Show SCons (C/C++ compiler backend) commands
+          --show-modules ^        # Show a summary of included modules
+          --show-progress ^       # Show progress during compilation
+          --show-memory ^         # Show memory usage statistics
+          --windows-disable-console ^
+          --assume-yes-for-downloads ^
+          --output-filename=AceInTheHole-Windows.exe ^
+          --include-package=kivymd ^
+          --include-package=kivy ^
+          --include-package=PIL ^
+          --include-package=requests ^
+          --include-package=qrcode ^
+          --include-package=bcrypt ^
+          --include-package=cryptography ^
+          --include-package=pygame ^
+          --include-package=plyer ^
+          --include-package=cv2 ^
+          --include-package=openpyxl ^
+          --include-package=docx2txt ^
+          --include-package=mutagen ^
+          --include-package=imageio ^
+          --include-package=psutil ^
+          main.py
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: AceInTheHole-Windows-Executable
+          path: main.dist/
+          retention-days: 30
+
+      - name: Create release info
+        run: |
+          echo "Build completed successfully!" > build-info.txt
+          echo "Download the AceInTheHole-Windows-Executable artifact" >> build-info.txt
+          echo "Extract and run AceInTheHole-Windows.exe" >> build-info.txt
+
+      - name: Upload build info
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build-Instructions
+          path: build-info.txt
