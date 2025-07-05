@@ -21,7 +21,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install nuitka
+          pip install auto-py-to-exe
+          pip install pyinstaller
           pip install kivymd
           pip install kivy
           pip install pillow
@@ -52,73 +53,9 @@ jobs:
           $env:Path += ";$pwd\$upx_folder"
           upx --version
           
-      - name: Create PyInstaller spec file
+      - name: Build with auto-py-to-exe
         run: |
-          @'
-          # -*- mode: python ; coding: utf-8 -*-
-          
-          block_cipher = None
-          
-          a = Analysis(
-              ['main.py'],
-              pathex=['.'],
-              binaries=[],
-              datas=[],
-              hiddenimports=[
-                  'kivymd',
-                  'kivy',
-                  'PIL',
-                  'requests',
-                  'qrcode',
-                  'bcrypt',
-                  'cryptography',
-                  'pygame',
-                  'plyer',
-                  'cv2',
-                  'openpyxl',
-                  'docx2txt',
-                  'mutagen',
-                  'imageio',
-                  'psutil'
-              ],
-              hookspath=[],
-              hooksconfig={},
-              runtime_hooks=[],
-              excludes=[],
-              win_no_prefer_redirects=False,
-              win_private_assemblies=False,
-              cipher=block_cipher,
-              noarchive=False,
-          )
-          
-          pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-          
-          exe = EXE(
-              pyz,
-              a.scripts,
-              a.binaries,
-              a.zipfiles,
-              a.datas,
-              [],
-              name='AceInTheHole-Windows',
-              debug=False,
-              bootloader_ignore_signals=False,
-              strip=False,
-              upx=True,
-              upx_exclude=[],
-              runtime_tmpdir=None,
-              console=False,
-              disable_windowed_traceback=False,
-              argv_emulation=False,
-              target_arch=None,
-              codesign_identity=None,
-              entitlements_file=None,
-          )
-          '@ | Out-File -FilePath "AceInTheHole.spec" -Encoding utf8
-          
-      - name: Build with PyInstaller
-        run: |
-          pyinstaller AceInTheHole.spec
+          auto-py-to-exe --noconfirm --onefile --windowed --name "AceInTheHole-Windows" --add-data "." --hidden-import "kivymd" --hidden-import "kivy" --hidden-import "PIL" --hidden-import "requests" --hidden-import "qrcode" --hidden-import "bcrypt" --hidden-import "cryptography" --hidden-import "pygame" --hidden-import "plyer" --hidden-import "cv2" --hidden-import "openpyxl" --hidden-import "docx2txt" --hidden-import "mutagen" --hidden-import "imageio" --hidden-import "psutil" --upx-dir "." main.py
           
       - name: Optimize build size
         run: |
