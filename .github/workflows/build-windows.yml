@@ -1,4 +1,4 @@
-name: Build Windows Cython Executable
+name: Build Windows Nuitka Executable
 on:
   push:
     branches: [ android-removed ]
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows-cython:
+  build-windows-nuitka:
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -18,17 +18,10 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Install build tools
-        run: |
-          # Install Visual Studio Build Tools
-          choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools"
-          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install cython
-          pip install setuptools
-          pip install wheel
+          pip install nuitka
           pip install kivy
           pip install kivy-deps.angle
           pip install kivy-deps.sdl2
@@ -49,93 +42,53 @@ jobs:
           pip install imageio_ffmpeg
           pip install psutil
           
-      - name: Create setup.py for Cython
+      - name: Set OpenGL Backend Environment
         run: |
-          @'
-          from setuptools import setup, Extension
-          from Cython.Build import cythonize
-          import glob
-          import os
+          $env:KIVY_GL_BACKEND = "angle_sdl2"
           
-          # Find all Python files
-          python_files = []
-          for root, dirs, files in os.walk('.'):
-              for file in files:
-                  if file.endswith('.py') and file != 'setup.py':
-                      python_files.append(os.path.join(root, file))
-          
-          # Create extensions
-          extensions = []
-          for py_file in python_files:
-              name = py_file.replace('.py', '').replace('\\', '.').replace('/', '.').lstrip('.')
-              extensions.append(Extension(name, [py_file]))
-          
-          setup(
-              name="AceInTheHole",
-              ext_modules=cythonize(extensions, compiler_directives={'language_level': 3}),
-              zip_safe=False,
-          )
-          '@ | Out-File -FilePath "setup.py" -Encoding utf8
-          
-      - name: Compile with Cython
+      - name: Build with Nuitka
+        env:
+          KIVY_GL_BACKEND: angle_sdl2
         run: |
-          python setup.py build_ext --inplace
+          python -m nuitka `
+          --standalone `
+          --assume-yes-for-downloads `
+          --windows-disable-console `
+          --output-filename=AceInTheHole-Windows.exe `
+          --include-package=kivymd `
+          --include-package=kivy `
+          --include-package=PIL `
+          --include-package=requests `
+          --include-package=qrcode `
+          --include-package=bcrypt `
+          --include-package=cryptography `
+          --include-package=pygame `
+          --include-package=plyer `
+          --include-package=cv2 `
+          --include-package=openpyxl `
+          --include-package=docx2txt `
+          --include-package=mutagen `
+          --include-package=imageio `
+          --include-package=psutil `
+          --include-package=tkinter `
+          main.py
           
-      - name: Create launcher script
+      - name: Verify build
         run: |
-          @'
-          import sys
-          import os
+          if (Test-Path "main.exe") {
+              $size = (Get-Item "main.exe").Length / 1MB
+              Write-Host "Executable created successfully!"
+              Write-Host "Size: $([math]::Round($size, 2)) MB"
+              Rename-Item "main.exe" "AceInTheHole-Windows.exe"
+          } else {
+              Write-Host "Error: Executable not found!"
+              Get-ChildItem -Name
+              exit 1
+          }
           
-          # Add current directory to Python path
-          sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-          
-          # Set environment variables
-          os.environ['KIVY_GL_BACKEND'] = 'angle_sdl2'
-          
-          # Import and run main
-          try:
-              import main
-              if hasattr(main, 'main'):
-                  main.main()
-              elif hasattr(main, 'run'):
-                  main.run()
-              else:
-                  print("No main() or run() function found in main.py")
-          except Exception as e:
-              print(f"Error running application: {e}")
-              import traceback
-              traceback.print_exc()
-              input("Press Enter to exit...")
-          '@ | Out-File -FilePath "AceInTheHole.py" -Encoding utf8
-          
-      - name: Create batch launcher
-        run: |
-          @'
-          @echo off
-          cd /d "%~dp0"
-          python AceInTheHole.py
-          pause
-          '@ | Out-File -FilePath "AceInTheHole.bat" -Encoding utf8
-          
-      - name: Package application
-        run: |
-          mkdir AceInTheHole-Cython
-          # Copy compiled extensions
-          Get-ChildItem -Filter "*.pyd" | Copy-Item -Destination "AceInTheHole-Cython\"
-          # Copy Python files that couldn't be compiled
-          Get-ChildItem -Filter "*.py" | Copy-Item -Destination "AceInTheHole-Cython\"
-          # Copy launcher
-          Copy-Item "AceInTheHole.py" -Destination "AceInTheHole-Cython\"
-          Copy-Item "AceInTheHole.bat" -Destination "AceInTheHole-Cython\"
-          # Copy data files if any
-          if (Test-Path "data") { Copy-Item "data" -Destination "AceInTheHole-Cython\" -Recurse }
-          if (Test-Path "assets") { Copy-Item "assets" -Destination "AceInTheHole-Cython\" -Recurse }
-          if (Test-Path "images") { Copy-Item "images" -Destination "AceInTheHole-Cython\" -Recurse }
-          
-      - name: Upload Cython build
+      - name: Upload Nuitka executable
         uses: actions/upload-artifact@v4
         with:
-          name: AceInTheHole-Cython-Build
-          path: AceInTheHole-Cython/
+          name: AceInTheHole-Nuitka-Executable
+          path: AceInTheHole-Windows.exe
           retention-days: 30
