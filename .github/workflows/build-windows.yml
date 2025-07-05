@@ -1,4 +1,5 @@
-name: Build Windows Executable
+
+name: Build Windows Executable (PyInstaller)
 
 on:
   push:
@@ -10,96 +11,263 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install nuitka
-          pip install kivymd
-          pip install kivy
-          pip install pillow
-          pip install requests
-          pip install qrcode
-          pip install bcrypt
-          pip install cryptography
-          pip install pygame
-          pip install plyer
-          pip install opencv-python
-          pip install openpyxl
-          pip install docx2txt
-          pip install mutagen
-          pip install imageio
-          pip install imageio_ffmpeg
-          pip install psutil
-
-      - name: Download and setup UPX
-        run: |
-          $upx_version = "4.2.1" # Check for the latest UPX version on GitHub releases
-          $upx_zip = "upx-$upx_version-win64.zip"
-          $upx_url = "https://github.com/upx/upx/releases/download/v$upx_version/$upx_zip"
-          Write-Host "Downloading UPX from $upx_url"
-          Invoke-WebRequest -Uri $upx_url -OutFile $upx_zip
-          Expand-Archive -Path $upx_zip -DestinationPath . -Force
-          # Find the actual extracted folder name (e.g., upx-4.2.1-win64)
-          $upx_folder = (Get-ChildItem -Path . -Directory | Where-Object {$_.Name -like "upx-*-win64"}).Name
-          Write-Host "UPX extracted to folder: $upx_folder"
-          # Add UPX to PATH for this step or reference it directly
-          $env:Path += ";$pwd\$upx_folder"
-          upx --version # Verify UPX is working
-
-      - name: Build Windows executable
-        run: |
-          python -m nuitka --standalone `
-          --lto=yes `
-          --verbose `             # Enable general Nuitka verbosity
-          --show-modules `        # Show a summary of included modules
-          --show-memory `         # Show memory usage statistics
-          --windows-disable-console `
-          --assume-yes-for-downloads `
-          --plugin-enable=upx `   # Enable UPX plugin
-          --upx-binary=upx.exe `  # Tell Nuitka to use 'upx.exe' from PATH (set above)
-          --output-filename=AceInTheHole-Windows.exe `
-          --include-package=kivymd `
-          --include-package=kivy `
-          --include-package=PIL `
-          --include-package=requests `
-          --include-package=qrcode `
-          --include-package=bcrypt `
-          --include-package=cryptography `
-          --include-package=pygame `
-          --include-package=plyer `
-          --include-package=opencv-python `
-          --include-package=openpyxl `
-          --include-package=docx2txt `
-          --include-package=mutagen `
-          --include-package=imageio `
-          --include-package=psutil `
-          main.py
-
-      - name: Upload Windows executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: AceInTheHole-Windows-Executable
-          path: main.dist/
-          retention-days: 30
-
-      - name: Create release info
-        run: |
-          echo "Build completed successfully!" > build-info.txt
-          echo "Download the AceInTheHole-Windows-Executable artifact" >> build-info.txt
-          echo "Extract and run AceInTheHole-Windows.exe" >> build-info.txt
-
-      - name: Upload build info
-        uses: actions/upload-artifact@v4
-        with:
-          name: Build-Instructions
-          path: build-info.txt
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install kivymd
+        pip install kivy
+        pip install pillow
+        pip install requests
+        pip install qrcode
+        pip install bcrypt
+        pip install cryptography
+        pip install pygame
+        pip install plyer
+        pip install opencv-python
+        pip install openpyxl
+        pip install docx2txt
+        pip install mutagen
+        pip install imageio
+        pip install imageio_ffmpeg
+        pip install psutil
+    
+    - name: Create PyInstaller spec file
+      run: |
+        # Create a custom spec file for better control
+        cat > AceInTheHole.spec << 'EOF'
+        # -*- mode: python ; coding: utf-8 -*-
+        
+        block_cipher = None
+        
+        # Analysis - what to include
+        a = Analysis(
+            ['main.py'],
+            pathex=[],
+            binaries=[],
+            datas=[
+                # Include KivyMD data files
+                ('venv/Lib/site-packages/kivymd', 'kivymd'),
+                # Include any assets if you have them
+                # ('assets', 'assets'),
+            ],
+            hiddenimports=[
+                # Core KivyMD imports
+                'kivymd',
+                'kivymd.app',
+                'kivymd.uix.button',
+                'kivymd.uix.card',
+                'kivymd.uix.label',
+                'kivymd.uix.boxlayout',
+                'kivymd.uix.scrollview',
+                
+                # Kivy core
+                'kivy.core.window',
+                'kivy.config',
+                
+                # Your custom modules (adjust as needed)
+                'secure_storage',
+                'password_manager', 
+                'password_ui',
+                'game_widget',
+                
+                # Only include vault modules you actually use
+                # 'vault_secure_integration',
+                # 'document_vault',
+                # 'complete_contact_integration',
+                # 'audio_vault_main_ui',
+                # 'photo_vault',
+                # 'video_vault',
+                # 'recycle_bin_ui',
+                # 'file_transfer_vault',
+                
+                # Essential libraries
+                'PIL',
+                'PIL.Image',
+                'requests',
+                'qrcode',
+                'bcrypt',
+                'cryptography',
+                'pygame',
+                'plyer',
+                'psutil',
+            ],
+            hookspath=[],
+            hooksconfig={},
+            runtime_hooks=[],
+            excludes=[
+                # Exclude heavy packages not needed at startup
+                'cv2',
+                'numpy',
+                'scipy',
+                'matplotlib',
+                'pandas',
+                'tensorflow',
+                'torch',
+                'sklearn',
+                
+                # Exclude test modules
+                'test',
+                'tests',
+                'unittest',
+                'doctest',
+                'pytest',
+                
+                # Exclude development tools
+                'pdb',
+                'pydoc',
+                'tkinter',
+                'turtle',
+                
+                # Exclude unused standard library modules
+                'email',
+                'html',
+                'http',
+                'xml',
+                'multiprocessing',
+                'concurrent.futures',
+                
+                # Exclude specific heavy submodules
+                'numpy.distutils',
+                'numpy.f2py',
+                'numpy.testing',
+                'imageio.plugins.ffmpeg',
+                'mutagen.id3v1',
+                'openpyxl.workbook.external_link',
+            ],
+            win_no_prefer_redirects=False,
+            win_private_assemblies=False,
+            cipher=block_cipher,
+            noarchive=False,
+        )
+        
+        # PYZ - Python zip archive
+        pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+        
+        # EXE - Final executable
+        exe = EXE(
+            pyz,
+            a.scripts,
+            [],
+            exclude_binaries=True,
+            name='AceInTheHole-Windows',
+            debug=False,
+            bootloader_ignore_signals=False,
+            strip=False,
+            upx=True,  # Enable UPX compression
+            console=False,  # No console window
+            disable_windowed_traceback=False,
+            argv_emulation=False,
+            target_arch=None,
+            codesign_identity=None,
+            entitlements_file=None,
+            icon=None,  # Add icon path if you have one: icon='icon.ico'
+        )
+        
+        # COLLECT - Bundle everything together
+        coll = COLLECT(
+            exe,
+            a.binaries,
+            a.zipfiles,
+            a.datas,
+            strip=False,
+            upx=True,  # Compress binaries
+            upx_exclude=[],
+            name='AceInTheHole-Windows'
+        )
+        EOF
+    
+    - name: Build with PyInstaller
+      run: |
+        # Build using the spec file
+        pyinstaller AceInTheHole.spec --clean --noconfirm
+        
+        # Alternative: Simple one-liner build (comment out the spec file approach above if using this)
+        # pyinstaller --onedir --windowed --name AceInTheHole-Windows --exclude-module cv2 --exclude-module numpy --exclude-module scipy --exclude-module matplotlib main.py
+    
+    - name: Optimize build size
+      run: |
+        # Remove unnecessary files from the build
+        $buildDir = "dist/AceInTheHole-Windows"
+        
+        if (Test-Path $buildDir) {
+          # Remove debug files
+          Get-ChildItem -Path $buildDir -Recurse -Name "*.pdb" | Remove-Item -Force -ErrorAction SilentlyContinue
+          Get-ChildItem -Path $buildDir -Recurse -Name "*.lib" | Remove-Item -Force -ErrorAction SilentlyContinue
+          Get-ChildItem -Path $buildDir -Recurse -Name "*.exp" | Remove-Item -Force -ErrorAction SilentlyContinue
+          
+          # Remove Windows API DLLs (often not needed)
+          Get-ChildItem -Path $buildDir -Recurse -Name "api-ms-win-*.dll" | Remove-Item -Force -ErrorAction SilentlyContinue
+          
+          # Remove test directories
+          Get-ChildItem -Path $buildDir -Recurse -Directory | Where-Object { $_.Name -match "test" -or $_.Name -match "Test" } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          
+          # Remove documentation files
+          Get-ChildItem -Path $buildDir -Recurse -Name "*.txt" | Where-Object { $_ -match "LICENSE|README|CHANGELOG" } | Remove-Item -Force -ErrorAction SilentlyContinue
+          
+          Write-Host "Build optimization completed"
+        }
+    
+    - name: Check build size
+      run: |
+        $buildDir = "dist/AceInTheHole-Windows"
+        if (Test-Path $buildDir) {
+          $size = [math]::Round((Get-ChildItem -Path $buildDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB, 2)
+          Write-Host "Build directory size: $size MB"
+          
+          # Show largest files
+          Write-Host "`nLargest files in build:"
+          Get-ChildItem -Path $buildDir -Recurse -File | Sort-Object Length -Descending | Select-Object -First 10 | ForEach-Object {
+            $sizeMB = [math]::Round($_.Length / 1MB, 2)
+            Write-Host "  $sizeMB MB - $($_.Name)"
+          }
+        }
+    
+    - name: Compress executable
+      run: |
+        $buildDir = "dist/AceInTheHole-Windows"
+        if (Test-Path $buildDir) {
+          # Create optimized zip
+          Compress-Archive -Path "$buildDir/*" -DestinationPath "AceInTheHole-Windows-PyInstaller.zip" -CompressionLevel Optimal
+          
+          $zipSize = [math]::Round((Get-Item "AceInTheHole-Windows-PyInstaller.zip").length / 1MB, 2)
+          Write-Host "Final zip size: $zipSize MB"
+        }
+    
+    - name: Upload Windows executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: AceInTheHole-Windows-PyInstaller
+        path: AceInTheHole-Windows-PyInstaller.zip
+        retention-days: 30
+    
+    - name: Create release info
+      run: |
+        $zipPath = "AceInTheHole-Windows-PyInstaller.zip"
+        $size = if (Test-Path $zipPath) { 
+          [math]::Round((Get-Item $zipPath).length / 1MB, 2)
+        } else { "Unknown" }
+        
+        echo "PyInstaller Build completed successfully!" > build-info.txt
+        echo "Archive size: $size MB" >> build-info.txt
+        echo "Download the AceInTheHole-Windows-PyInstaller artifact" >> build-info.txt
+        echo "Extract and run AceInTheHole-Windows.exe" >> build-info.txt
+        echo "" >> build-info.txt
+        echo "If size is still large, check the hiddenimports and excludes" >> build-info.txt
+        echo "in the .spec file to fine-tune what gets included." >> build-info.txt
+    
+    - name: Upload build info
+      uses: actions/upload-artifact@v4
+      with:
+        name: PyInstaller-Build-Instructions
+        path: build-info.txt
