@@ -21,7 +21,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install auto-py-to-exe
           pip install pyinstaller
           pip install kivymd
           pip install kivy
@@ -53,9 +52,9 @@ jobs:
           $env:Path += ";$pwd\$upx_folder"
           upx --version
           
-      - name: Build with auto-py-to-exe
+      - name: Build with PyInstaller
         run: |
-          auto-py-to-exe --noconfirm --onefile --windowed --name "AceInTheHole-Windows" --add-data "." --hidden-import "kivymd" --hidden-import "kivy" --hidden-import "PIL" --hidden-import "requests" --hidden-import "qrcode" --hidden-import "bcrypt" --hidden-import "cryptography" --hidden-import "pygame" --hidden-import "plyer" --hidden-import "cv2" --hidden-import "openpyxl" --hidden-import "docx2txt" --hidden-import "mutagen" --hidden-import "imageio" --hidden-import "psutil" --upx-dir "." main.py
+          pyinstaller --noconfirm --onefile --windowed --name "AceInTheHole-Windows" --add-data ".;." --hidden-import "kivymd" --hidden-import "kivy" --hidden-import "PIL" --hidden-import "requests" --hidden-import "qrcode" --hidden-import "bcrypt" --hidden-import "cryptography" --hidden-import "pygame" --hidden-import "plyer" --hidden-import "cv2" --hidden-import "openpyxl" --hidden-import "docx2txt" --hidden-import "mutagen" --hidden-import "imageio" --hidden-import "psutil" --upx-dir "." main.py
           
       - name: Optimize build size
         run: |
