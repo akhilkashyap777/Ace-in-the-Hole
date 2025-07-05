@@ -1,4 +1,4 @@
-name: Build Windows Nuitka Executable
+name: Build Windows Nuitka Executablee
 on:
   push:
     branches: [ android-removed ]
