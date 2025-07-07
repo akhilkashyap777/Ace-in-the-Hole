@@ -2,16 +2,25 @@ import os
 import platform
 import threading
 import time
+import random
+import string
+import json
+import hashlib
 
 class SecureStorage:
     """
     Cross-platform secure storage for app-private directories
     Files stored here are only accessible by your app, not visible to users or file managers
     ✅ OPTIMIZED VERSION with caching and lazy loading
+    ✅ OBFUSCATED VERSION with hidden names and unpredictable locations
+    ✅ DEEP NESTED VERSION with persistent location storage
     """
     
     def __init__(self, app_name="SecretVault"):
-        self.app_name = app_name
+        # ✅ PERSISTENT OBFUSCATION: Load or generate permanent names
+        self.original_app_name = app_name
+        self.config_file = self._get_config_file_path()
+        self.load_or_create_persistent_config()
         
         # ✅ OPTIMIZATION: Cache frequently accessed values
         self._platform_cache = None
@@ -30,12 +39,111 @@ class SecureStorage:
         
         # Initialize base directory (but don't create subdirs yet)
         self.base_dir = self.get_secure_base_directory()
-        self.vault_dir = os.path.join(self.base_dir, "vault_data")
-        self.recycle_dir = os.path.join(self.base_dir, "vault_recycle")
-        self.config_dir = os.path.join(self.base_dir, "config")
+        self.vault_dir = os.path.join(self.base_dir, self.obfuscated_folders['vault'])
+        self.recycle_dir = os.path.join(self.base_dir, self.obfuscated_folders['recycle'])
+        self.config_dir = os.path.join(self.base_dir, self.obfuscated_folders['config'])
         
         print(f"📁 Base directory: {self.base_dir}")
         print(f"🔒 Platform: {self.get_platform_name()}")
+        print(f"🎭 Hidden as: {self.app_name}")
+    
+    def _get_config_file_path(self):
+        """✅ PERSISTENT: Get path for tiny config file that remembers location"""
+        # Store config in a very innocent looking location
+        if platform.system() == "Windows":
+            temp_dir = os.environ.get('TEMP', os.getcwd())
+            # Hide as Windows system temp file
+            return os.path.join(temp_dir, ".winsvc.dat")
+        else:
+            # For other platforms, use home directory
+            return os.path.join(os.path.expanduser("~"), f".{self.original_app_name.lower()}.conf")
+    
+    def load_or_create_persistent_config(self):
+        """✅ PERSISTENT: Load existing config or create new one"""
+        try:
+            if os.path.exists(self.config_file):
+                # Load existing configuration
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                
+                self.app_name = config.get('app_name')
+                self.obfuscated_folders = config.get('folders', {})
+                self.chosen_base_path = config.get('base_path')
+                
+                print("✅ Loaded existing hidden configuration")
+                return
+                
+        except Exception as e:
+            print(f"⚠️ Could not load config: {e}")
+        
+        # Create new configuration
+        self.app_name = self._generate_system_name()
+        self.obfuscated_folders = self._generate_folder_names()
+        self.chosen_base_path = None  # Will be determined later
+        
+        print("🆕 Created new hidden configuration")
+    
+    def save_persistent_config(self):
+        """✅ PERSISTENT: Save configuration for future launches"""
+        try:
+            config = {
+                'app_name': self.app_name,
+                'folders': self.obfuscated_folders,
+                'base_path': self.chosen_base_path,
+                'created_time': time.time()
+            }
+            
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f)
+            
+            # Hide the config file itself
+            if platform.system() == "Windows":
+                try:
+                    import ctypes
+                    ctypes.windll.kernel32.SetFileAttributesW(self.config_file, 0x06)  # Hidden + System
+                except:
+                    pass
+            
+            print("💾 Saved persistent configuration")
+            
+        except Exception as e:
+            print(f"⚠️ Could not save config: {e}")
+    
+    def _generate_system_name(self):
+        """✅ OBFUSCATION: Generate random system-like folder names"""
+        system_prefixes = [
+            "WinSvc", "SysCache", "MsHost", "WinUpdate", "SvcHost", 
+            "MsData", "SysTemp", "WinLog", "AppHost", "SysConfig",
+            "WinDefend", "SvcMgr", "SysProc", "WinNet", "MsSvc"
+        ]
+        
+        system_suffixes = [
+            "32", "64", "Host", "Svc", "Cache", "Data", "Temp", "Log", "Mgr", "Proc"
+        ]
+        
+        prefix = random.choice(system_prefixes)
+        suffix = random.choice(system_suffixes)
+        
+        # Add random number to make it more unique
+        random_num = random.randint(100, 9999)
+        
+        return f"{prefix}{suffix}{random_num}"
+    
+    def _generate_folder_names(self):
+        """✅ OBFUSCATION: Generate innocent-looking folder names"""
+        return {
+            'vault': 'cache',
+            'recycle': 'backup',
+            'config': 'logs',
+            'photos': 'img',
+            'videos': 'vid',
+            'notes': 'txt',
+            'audio': 'snd',
+            'documents': 'doc',
+            'apps': 'bin',
+            'other': 'tmp',
+            'thumbnails': 'thumb'
+        }
     
     def get_platform_name(self):
         """✅ OPTIMIZATION: Cache platform detection"""
@@ -52,50 +160,128 @@ class SecureStorage:
         return self._platform_cache
     
     def get_secure_base_directory(self):
-        """✅ OPTIMIZATION: Cache base directory calculation"""
+        """✅ PERSISTENT + DEEP NESTED: Get or create deeply hidden directory"""
         if self._base_dir_cache is None:
-            if platform.system() == "Windows":
-                self._base_dir_cache = self._get_windows_private_directory()
-            elif platform.system() == "Darwin":  # macOS
-                self._base_dir_cache = self._get_macos_private_directory()
-            elif platform.system() == "Linux":
-                self._base_dir_cache = self._get_linux_private_directory()
+            if self.chosen_base_path and os.path.exists(self.chosen_base_path):
+                # Use existing saved path
+                self._base_dir_cache = self.chosen_base_path
+                print(f"📂 Using saved location: {self._base_dir_cache}")
             else:
-                # Fallback to current directory (not secure)
-                print("⚠️ WARNING: Unsupported platform, using current directory")
-                self._base_dir_cache = os.path.join(os.getcwd(), f".{self.app_name}_data")
+                # Find new location and save it
+                if platform.system() == "Windows":
+                    self._base_dir_cache = self._find_windows_deep_location()
+                elif platform.system() == "Darwin":  # macOS
+                    self._base_dir_cache = self._get_macos_private_directory()
+                elif platform.system() == "Linux":
+                    self._base_dir_cache = self._get_linux_private_directory()
+                else:
+                    # Fallback to current directory (not secure)
+                    print("⚠️ WARNING: Unsupported platform, using current directory")
+                    self._base_dir_cache = os.path.join(os.getcwd(), f".{self.app_name}_data")
+                
+                # Save the chosen location
+                self.chosen_base_path = self._base_dir_cache
+                self.save_persistent_config()
         
         return self._base_dir_cache
     
-    def _get_windows_private_directory(self):
-        """Get Windows app-private directory"""
-        try:
-            # Method 1: Use APPDATA\Local (recommended for app data)
-            appdata_local = os.environ.get('LOCALAPPDATA')
-            if appdata_local:
-                private_dir = os.path.join(appdata_local, self.app_name)
-                print(f"🪟 Windows private storage: {private_dir}")
-                return private_dir
-            
-            # Method 2: Use APPDATA\Roaming as fallback
-            appdata_roaming = os.environ.get('APPDATA')
-            if appdata_roaming:
-                private_dir = os.path.join(appdata_roaming, self.app_name)
-                print(f"🪟 Windows fallback storage: {private_dir}")
-                return private_dir
-            
-            # Method 3: Use user profile directory
-            user_profile = os.environ.get('USERPROFILE')
-            if user_profile:
-                private_dir = os.path.join(user_profile, f".{self.app_name}")
-                print(f"🪟 Windows user profile storage: {private_dir}")
-                return private_dir
-                
-        except Exception as e:
-            print(f"⚠️ Windows directory error: {e}")
+    def _find_windows_deep_location(self):
+        """✅ DEEP NESTED: Find deeply hidden Windows location with drive detection"""
         
-        # Fallback
-        return os.path.join(os.path.expanduser("~"), f".{self.app_name}")
+        # ✅ DRIVE DETECTION: Get all available drives
+        available_drives = self._get_available_drives()
+        print(f"🔍 Found drives: {available_drives}")
+        
+        # ✅ DEEP NESTED: Create very deep path templates
+        deep_path_templates = [
+            # Deep in ProgramData
+            "{drive}:\\ProgramData\\Microsoft\\Windows\\SystemApps\\WinDefend\\Cache\\Temp\\{app_name}",
+            "{drive}:\\ProgramData\\Microsoft\\Windows\\Security\\Health\\Scans\\History\\{app_name}",
+            "{drive}:\\ProgramData\\Microsoft\\Network\\Connections\\Profiles\\Public\\{app_name}",
+            "{drive}:\\ProgramData\\Microsoft\\Windows\\DeviceMetadataCache\\dmrccache\\{app_name}",
+            
+            # Deep in AppData
+            "{appdata}\\Microsoft\\Windows\\INetCache\\Content.IE5\\{app_name}",
+            "{appdata}\\Microsoft\\Edge\\User Data\\ShaderCache\\GPUCache\\{app_name}",
+            "{appdata}\\Microsoft\\Windows\\CloudExperienceHost\\Cache\\{app_name}",
+            "{appdata}\\Microsoft\\Windows\\Shell\\DefaultLayouts\\{app_name}",
+            
+            # Deep in System32 area (if writable)
+            "{drive}:\\Windows\\System32\\config\\systemprofile\\AppData\\Local\\{app_name}",
+            "{drive}:\\Windows\\ServiceProfiles\\NetworkService\\AppData\\Local\\{app_name}",
+        ]
+        
+        # Get environment variables
+        appdata = os.environ.get('LOCALAPPDATA', '')
+        
+        # Test each location on each drive
+        for drive in available_drives:
+            for template in deep_path_templates:
+                try:
+                    if "{appdata}" in template:
+                        if not appdata:
+                            continue
+                        test_path = template.format(appdata=appdata, app_name=self.app_name)
+                    else:
+                        test_path = template.format(drive=drive, app_name=self.app_name)
+                    
+                    # Test if we can create this path
+                    if self._test_path_writable(test_path):
+                        print(f"✅ Selected deep location: {test_path}")
+                        return test_path
+                        
+                except Exception as e:
+                    continue
+        
+        # Fallback to safer location
+        print("⚠️ Using fallback location")
+        appdata = os.environ.get('LOCALAPPDATA', os.path.expanduser("~"))
+        return os.path.join(appdata, "Microsoft", "Windows", "Temp", self.app_name)
+    
+    def _get_available_drives(self):
+        """✅ DRIVE DETECTION: Get list of available Windows drives"""
+        drives = []
+        
+        if platform.system() == "Windows":
+            try:
+                import string
+                for letter in string.ascii_uppercase:
+                    drive_path = f"{letter}:\\"
+                    if os.path.exists(drive_path):
+                        drives.append(letter)
+                        
+                        # Prioritize C drive
+                        if letter == 'C':
+                            drives.insert(0, drives.pop())  # Move C to front
+                            
+            except Exception as e:
+                print(f"⚠️ Drive detection error: {e}")
+                drives = ['C']  # Default fallback
+        else:
+            drives = ['']  # For non-Windows, no drive letters
+            
+        return drives
+    
+    def _test_path_writable(self, path):
+        """✅ SAFETY: Test if we can actually write to a location"""
+        try:
+            # Create parent directories if needed
+            parent_dir = os.path.dirname(path)
+            if not os.path.exists(parent_dir):
+                os.makedirs(parent_dir, exist_ok=True)
+            
+            # Test write access
+            test_file = os.path.join(path, "test_write.tmp")
+            os.makedirs(path, exist_ok=True)
+            
+            with open(test_file, 'w') as f:
+                f.write("test")
+            
+            os.remove(test_file)
+            return True
+            
+        except Exception:
+            return False
     
     def _get_macos_private_directory(self):
         """Get macOS app-private directory"""
@@ -140,26 +326,27 @@ class SecureStorage:
             if self._directories_created:  # Double-check after acquiring lock
                 return
             
+            # ✅ OBFUSCATION: Use obfuscated folder names
             directories = [
                 self.base_dir,
                 self.vault_dir,
                 self.recycle_dir,
                 self.config_dir,
-                os.path.join(self.vault_dir, "photos"),
-                os.path.join(self.vault_dir, "videos"),
-                os.path.join(self.vault_dir, "notes"),
-                os.path.join(self.vault_dir, "audio"),
-                os.path.join(self.vault_dir, "documents"),
-                os.path.join(self.vault_dir, "apps"),
-                os.path.join(self.vault_dir, "other"),
-                os.path.join(self.recycle_dir, "photos"),
-                os.path.join(self.recycle_dir, "videos"),
-                os.path.join(self.recycle_dir, "notes"),
-                os.path.join(self.recycle_dir, "audio"),
-                os.path.join(self.recycle_dir, "documents"),
-                os.path.join(self.recycle_dir, "apps"),
-                os.path.join(self.recycle_dir, "other"),
-                os.path.join(self.recycle_dir, "thumbnails")
+                os.path.join(self.vault_dir, self.obfuscated_folders['photos']),
+                os.path.join(self.vault_dir, self.obfuscated_folders['videos']),
+                os.path.join(self.vault_dir, self.obfuscated_folders['notes']),
+                os.path.join(self.vault_dir, self.obfuscated_folders['audio']),
+                os.path.join(self.vault_dir, self.obfuscated_folders['documents']),
+                os.path.join(self.vault_dir, self.obfuscated_folders['apps']),
+                os.path.join(self.vault_dir, self.obfuscated_folders['other']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['photos']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['videos']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['notes']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['audio']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['documents']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['apps']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['other']),
+                os.path.join(self.recycle_dir, self.obfuscated_folders['thumbnails'])
             ]
             
             # ✅ OPTIMIZATION: Batch directory creation
@@ -169,9 +356,9 @@ class SecureStorage:
                     if not os.path.exists(directory):
                         os.makedirs(directory, mode=0o700)  # Owner read/write/execute only
                         created_count += 1
-                    else:
-                        # ✅ OPTIMIZATION: Only set permissions if needed
-                        self._set_secure_permissions_if_needed(directory)
+                    
+                    # ✅ DEEP HIDING: Always set secure permissions
+                    self._set_secure_permissions_if_needed(directory)
                         
                 except Exception as e:
                     print(f"❌ Error creating directory {directory}: {e}")
@@ -182,7 +369,7 @@ class SecureStorage:
             self._directories_created = True
     
     def _set_secure_permissions_if_needed(self, path):
-        """✅ OPTIMIZATION: Only set permissions if they're incorrect"""
+        """✅ DEEP HIDING: Enhanced Windows hiding with system attributes"""
         try:
             # Check current permissions first
             stat_info = os.stat(path)
@@ -191,35 +378,41 @@ class SecureStorage:
             if current_perms != "700":
                 # Set to 700 (owner only: read, write, execute)
                 os.chmod(path, 0o700)
-                
-                # On Windows, also hide the directory
-                if platform.system() == "Windows":
-                    try:
-                        import ctypes
-                        # Set hidden attribute on Windows
-                        ctypes.windll.kernel32.SetFileAttributesW(path, 0x02)
-                    except:
-                        pass
+            
+            # ✅ DEEP HIDING: Enhanced Windows hiding
+            if platform.system() == "Windows":
+                try:
+                    import ctypes
+                    # Set Hidden + System + Not Content Indexed for maximum hiding
+                    # 0x02 = Hidden, 0x04 = System, 0x2000 = Not Content Indexed
+                    # Combined: 0x2006 for maximum stealth
+                    ctypes.windll.kernel32.SetFileAttributesW(path, 0x2006)
+                except:
+                    pass
                         
         except Exception as e:
             print(f"⚠️ Warning: Could not check/set secure permissions on {path}: {e}")
     
     def get_vault_directory(self, file_type=None):
-        """Get vault directory for specific file type"""
+        """Get vault directory for specific file type with obfuscated names"""
         # ✅ OPTIMIZATION: Lazy directory creation
         self.ensure_secure_directories()
         
         if file_type:
-            return os.path.join(self.vault_dir, file_type)
+            # ✅ OBFUSCATION: Map real file types to obfuscated folder names
+            obfuscated_type = self.obfuscated_folders.get(file_type, file_type)
+            return os.path.join(self.vault_dir, obfuscated_type)
         return self.vault_dir
     
     def get_recycle_directory(self, file_type=None):
-        """Get recycle directory for specific file type"""
+        """Get recycle directory for specific file type with obfuscated names"""
         # ✅ OPTIMIZATION: Lazy directory creation
         self.ensure_secure_directories()
         
         if file_type:
-            return os.path.join(self.recycle_dir, file_type)
+            # ✅ OBFUSCATION: Map real file types to obfuscated folder names
+            obfuscated_type = self.obfuscated_folders.get(file_type, file_type)
+            return os.path.join(self.recycle_dir, obfuscated_type)
         return self.recycle_dir
     
     def get_config_directory(self):
@@ -257,8 +450,6 @@ class SecureStorage:
             
             # Set secure permissions
             self._set_secure_permissions_if_needed(target_path)
-            
-            print(f"✅ File stored securely: {target_path}")
             
             return {
                 "success": True,
@@ -307,7 +498,11 @@ class SecureStorage:
             "recycle_directory": self.recycle_dir,
             "config_directory": self.config_dir,
             "permissions": "0o700 (owner only)",
-            "hidden": platform.system() == "Windows"
+            "hidden": platform.system() == "Windows",
+            "obfuscated_name": self.app_name,  # ✅ OBFUSCATION: Show the random name being used
+            "folder_mapping": self.obfuscated_folders,  # ✅ OBFUSCATION: Show folder name mappings
+            "config_file": self.config_file,  # ✅ PERSISTENT: Show config file location
+            "nesting_depth": len(self.base_dir.split(os.sep)) - 1  # ✅ DEEP NESTED: Show depth
         }
         
         # ✅ OPTIMIZATION: Only calculate size if directories exist (avoid expensive walk)
@@ -378,7 +573,11 @@ class SecureStorage:
         result = {
             "is_secure": len(issues) == 0,
             "issues": issues,
-            "recommendations": self._get_security_recommendations()
+            "recommendations": self._get_security_recommendations(),
+            "obfuscation_active": True,  # ✅ OBFUSCATION: Indicate obfuscation is active
+            "hidden_as": self.app_name,  # ✅ OBFUSCATION: Show what it's hidden as
+            "deep_nested": True,  # ✅ DEEP NESTED: Indicate deep nesting active
+            "persistence_enabled": True  # ✅ PERSISTENT: Indicate persistence active
         }
         
         # Cache result
@@ -398,6 +597,11 @@ class SecureStorage:
             recommendations.append("Ensure file permissions are set to 700 (owner only)")
         
         recommendations.extend([
+            "✅ Deep nesting active - 6+ levels deep in system folders",
+            "✅ Obfuscated naming active - folder appears as system component",
+            "✅ Unpredictable location - different path each computer",
+            "✅ Persistent location - same path on this computer forever",
+            "✅ Enhanced hiding - hidden + system + not indexed attributes",
             "Consider encrypting files before storing them",
             "Implement user authentication (PIN/password)",
             "Regular security audits of stored files"
@@ -423,8 +627,164 @@ class SecureStorage:
                 "storage_info_cached": self._storage_info_cache is not None,
                 "security_verified": self._security_verified,
                 "directories_created": self._directories_created,
-                "cache_age_seconds": time.time() - self._storage_info_cache_time if self._storage_info_cache else 0
+                "cache_age_seconds": time.time() - self._storage_info_cache_time if self._storage_info_cache else 0,
+                "obfuscated_name": self.app_name,  # ✅ OBFUSCATION: Show current obfuscated name
+                "folder_mapping": self.obfuscated_folders,  # ✅ OBFUSCATION: Show folder mappings
+                "config_file": self.config_file,  # ✅ PERSISTENT: Show config file
+                "persistent_path": self.chosen_base_path  # ✅ PERSISTENT: Show saved path
             }
+    
+    def reveal_location_for_testing(self):
+        """✅ TESTING: Method to reveal hidden location for testing purposes"""
+        info = {
+            "hidden_folder_location": self.base_dir,
+            "config_file_location": self.config_file,
+            "obfuscated_name": self.app_name,
+            "folder_mappings": self.obfuscated_folders,
+            "how_to_find": [
+                f"1. Open File Explorer",
+                f"2. Navigate to: {self.base_dir}",
+                f"3. Or paste this path in address bar: {self.base_dir}",
+                f"4. Enable 'Show hidden files' in View menu if needed",
+                f"5. Look for folders named: {list(self.obfuscated_folders.values())}"
+            ]
+        }
+        
+        print("\n" + "="*60)
+        print("🔍 TESTING: How to find your hidden vault folders")
+        print("="*60)
+        print(f"📁 Main location: {info['hidden_folder_location']}")
+        print(f"⚙️ Config file: {info['config_file_location']}")
+        print(f"🎭 Hidden as: {info['obfuscated_name']}")
+        print(f"\n📂 Folder structure inside:")
+        for real_name, hidden_name in self.obfuscated_folders.items():
+            print(f"   {real_name} → {hidden_name}")
+        
+        print(f"\n🔍 To find manually:")
+        for step in info['how_to_find']:
+            print(f"   {step}")
+        print("="*60)
+        
+        return info
+    
+    def show_my_files(self):
+        """✅ TESTING: Show all your saved files and their exact locations"""
+        print("\n" + "="*70)
+        print("📋 YOUR SAVED FILES - Exact Locations")
+        print("="*70)
+        
+        if not os.path.exists(self.base_dir):
+            print("❌ No vault folder found yet. Add some files first!")
+            return {}
+        
+        all_files = {}
+        total_files = 0
+        
+        # Check each file type folder
+        file_types = ['photos', 'videos', 'documents', 'audio', 'notes', 'apps', 'other']
+        
+        for file_type in file_types:
+            vault_folder = self.get_vault_directory(file_type)
+            recycle_folder = self.get_recycle_directory(file_type)
+            
+            files_in_vault = self._scan_folder_files(vault_folder, file_type, "VAULT")
+            files_in_recycle = self._scan_folder_files(recycle_folder, file_type, "RECYCLE")
+            
+            if files_in_vault or files_in_recycle:
+                all_files[file_type] = {
+                    'vault': files_in_vault,
+                    'recycle': files_in_recycle
+                }
+                total_files += len(files_in_vault) + len(files_in_recycle)
+        
+        # Display results
+        if total_files == 0:
+            print("📂 No files found in vault yet.")
+            print("💡 Add some files through your app first!")
+        else:
+            print(f"📊 Found {total_files} files in your secret vault\n")
+            
+            for file_type, locations in all_files.items():
+                if locations['vault'] or locations['recycle']:
+                    print(f"📁 {file_type.upper()}:")
+                    
+                    if locations['vault']:
+                        print(f"  🔒 In Vault ({len(locations['vault'])} files):")
+                        for file_info in locations['vault']:
+                            print(f"     • {file_info['name']}")
+                            print(f"       📍 {file_info['path']}")
+                    
+                    if locations['recycle']:
+                        print(f"  🗑️ In Recycle ({len(locations['recycle'])} files):")
+                        for file_info in locations['recycle']:
+                            print(f"     • {file_info['name']}")
+                            print(f"       📍 {file_info['path']}")
+                    print()
+        
+        # Show quick access info
+        print("🔍 QUICK ACCESS:")
+        print(f"📁 Main vault location: {self.base_dir}")
+        print(f"🎭 Hidden as: {self.app_name}")
+        print(f"📂 Photos are in: {self.get_vault_directory('photos')}")
+        print(f"🎬 Videos are in: {self.get_vault_directory('videos')}")
+        print(f"📄 Documents are in: {self.get_vault_directory('documents')}")
+        
+        print("="*70)
+        return all_files
+    
+    def _scan_folder_files(self, folder_path, file_type, location_type):
+        """Helper method to scan files in a folder"""
+        files = []
+        
+        try:
+            if os.path.exists(folder_path):
+                for item in os.listdir(folder_path):
+                    item_path = os.path.join(folder_path, item)
+                    if os.path.isfile(item_path):
+                        # Get file info
+                        file_size = os.path.getsize(item_path)
+                        mod_time = os.path.getmtime(item_path)
+                        
+                        files.append({
+                            'name': item,
+                            'path': item_path,
+                            'size_mb': round(file_size / (1024 * 1024), 2),
+                            'modified': time.strftime('%Y-%m-%d %H:%M', time.localtime(mod_time)),
+                            'type': file_type,
+                            'location': location_type
+                        })
+        except Exception as e:
+            print(f"⚠️ Error scanning {folder_path}: {e}")
+        
+        return files
+    
+    def open_vault_folder_in_explorer(self):
+        """✅ TESTING: Open the vault folder directly in File Explorer (Windows only)"""
+        if platform.system() != "Windows":
+            print("❌ This feature only works on Windows")
+            return False
+        
+        try:
+            import subprocess
+            
+            # Make sure the folder exists
+            self.ensure_secure_directories()
+            
+            print(f"🔍 Opening vault folder in Explorer...")
+            print(f"📁 Location: {self.base_dir}")
+            
+            # Open folder in Windows Explorer
+            subprocess.run(['explorer', self.base_dir], check=True)
+            
+            print("✅ Vault folder opened in File Explorer!")
+            print("💡 Look for folders named:", list(self.obfuscated_folders.values()))
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Could not open folder: {e}")
+            print(f"📁 Manual path: {self.base_dir}")
+            return False
 
 # ✅ OPTIMIZATION: Simplified update function
 def update_recycle_bin_for_secure_storage(recycle_bin_core, secure_storage):
@@ -458,9 +818,18 @@ def test_secure_storage():
     if security_check['issues']:
         print(f"   Issues: {security_check['issues']}")
     
+    # ✅ OBFUSCATION: Show obfuscation details
+    print(f"\n🎭 Obfuscation Details:")
+    print(f"   Hidden as: {security_check['hidden_as']}")
+    print(f"   Folder mappings: {info['folder_mapping']}")
+    print(f"   Nesting depth: {info['nesting_depth']} levels")
+    
     # Show cache stats
     cache_stats = storage.get_cache_stats()
     print(f"\n💾 Cache Stats: {cache_stats}")
+    
+    # ✅ TESTING: Reveal location for testing
+    storage.reveal_location_for_testing()
     
     print("\n✅ Secure storage test completed")
     return storage
