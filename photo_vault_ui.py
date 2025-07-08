@@ -1,5 +1,4 @@
 import os
-import re
 import io
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
@@ -26,7 +25,6 @@ class PhotoGalleryWidget(MDBoxLayout):
         self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
         self.build_ui()
-        
         Clock.schedule_once(lambda dt: self.refresh_gallery(None), 0.1)
     
     def build_ui(self):
@@ -70,7 +68,6 @@ class PhotoGalleryWidget(MDBoxLayout):
         actions_row.add_widget(self.add_btn)
         
         header.add_widget(actions_row)
-        
         self.add_widget(header)
     
     def build_photo_grid(self):
@@ -346,7 +343,6 @@ class PhotoGalleryWidget(MDBoxLayout):
             info_layout.add_widget(select_btn)
             
             photo_card.add_widget(info_layout)
-            
             photo_card.bind(on_release=lambda x: self.select_photo(photo_path))
             
             return photo_card
@@ -356,13 +352,7 @@ class PhotoGalleryWidget(MDBoxLayout):
     
     def select_photo(self, photo_path):
         self.selected_photo = photo_path
-        
-        vault_filename = os.path.basename(photo_path)
-        match = re.match(r'vault_\d{8}_\d{6}_\d+_(.+)', vault_filename)
-        if match:
-            original_name = match.group(1)
-        else:
-            original_name = vault_filename
+        original_name = os.path.basename(photo_path)
         
         content = MDLabel(
             text=f"Selected: {original_name}\n\nUse the buttons below to view, export, or delete this photo.",
@@ -457,12 +447,7 @@ class PhotoGalleryWidget(MDBoxLayout):
             self.show_no_selection_message("export")
             return
         
-        vault_filename = os.path.basename(self.selected_photo)
-        match = re.match(r'vault_\d{8}_\d{6}_\d+_(.+)', vault_filename)
-        if match:
-            original_name = match.group(1)
-        else:
-            original_name = vault_filename
+        original_name = os.path.basename(self.selected_photo)
         
         content = MDBoxLayout(orientation='vertical', spacing=15, padding=15)
         
@@ -506,7 +491,6 @@ class PhotoGalleryWidget(MDBoxLayout):
         
         choose_btn.bind(on_press=start_export)
         cancel_btn.bind(on_press=popup.dismiss)
-        
         popup.open()
 
     def choose_folder_and_export(self):
@@ -690,7 +674,6 @@ class PhotoGalleryWidget(MDBoxLayout):
         
         yes_btn.bind(on_press=delete_confirmed)
         no_btn.bind(on_press=popup.dismiss)
-        
         popup.open()
     
     def back_to_vault(self, instance):

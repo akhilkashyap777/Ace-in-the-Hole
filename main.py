@@ -272,6 +272,8 @@ class VaultApp(MDApp):
         
     def build(self):
         """Build the application"""
+        self.title = "Card Shark Pro"
+        self.icon = "icon.png"
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "BlueGray"
         

@@ -48,6 +48,28 @@ env/
 .venv/
 "AceVault-Linux.sh"
 
-# Specific spec files to ignore (but NOT buildozer.spec)
-# Add any other .spec files you want to ignore here, like:
-# some-other-file.spec
+# Shell scripts
+*.sh
+
+# Spec files (except buildozer.spec which we want to keep)
+*.spec
+!buildozer.spec
+
+# Excel files
+*.xlsx
+*.xls
+
+# Text files
+*.txt
+
+# Additional exclusions for Microsoft Store submission
+# Exclude ALL folders except essential ones
+*/
+
+# Allow only essential folders (uncomment and modify as needed)
+# !src/
+# !assets/
+# !images/
+# !icons/
+# !config/
+# !resources/

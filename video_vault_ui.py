@@ -159,6 +159,33 @@ class VideoVault(VideoVaultCore):
         print(f"Selected {len(file_paths)} files for processing")
         # Show confirmation dialog for file movement
         show_file_movement_confirmation(file_paths, lambda fps, move_files: self.process_files(fps, callback, move_files))
+
+    def generate_unique_filename(self, original_filename, destination_dir):
+        """Generate a unique filename to avoid conflicts while keeping original name"""
+        base_name, extension = os.path.splitext(original_filename)
+        destination_path = os.path.join(destination_dir, original_filename)
+        
+        # If no conflict, use original name
+        if not os.path.exists(destination_path):
+            return original_filename
+        
+        # Handle conflicts with (1), (2), etc.
+        counter = 1
+        while True:
+            new_filename = f"{base_name} ({counter}){extension}"
+            new_path = os.path.join(destination_dir, new_filename)
+            
+            if not os.path.exists(new_path):
+                return new_filename
+            
+            counter += 1
+            
+            # Safety check to prevent infinite loops
+            if counter > 1000:
+                # Fallback to timestamp if we somehow get 1000+ duplicates
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                return f"{base_name}_{timestamp}{extension}"
     
     def process_files(self, file_paths, callback, move_files=True):
         """Process selected video files"""
@@ -175,18 +202,18 @@ class VideoVault(VideoVaultCore):
                             print(f"Skipping invalid video file: {file_path}")
                             continue
                         
-                        # Generate unique filename
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                        filename = f"vault_{timestamp}_{os.path.basename(file_path)}"
-                        destination = os.path.join(self.vault_dir, filename)
+                        # FIXED: Keep original filename with conflict handling
+                        original_filename = os.path.basename(file_path)
+                        unique_filename = self.generate_unique_filename(original_filename, self.vault_dir)
+                        destination = os.path.join(self.vault_dir, unique_filename)
                         
                         # Move or copy file to vault directory
                         if move_files:
                             print(f"Moving file to: {destination}")
-                            shutil.move(file_path, destination)  # MOVE instead of copy
+                            shutil.move(file_path, destination)
                         else:
                             print(f"Copying file to: {destination}")
-                            shutil.copy2(file_path, destination)  # COPY for less secure option
+                            shutil.copy2(file_path, destination)
                         
                         # Generate thumbnail with proper cleanup
                         self.generate_thumbnail_safe(destination)
@@ -198,14 +225,12 @@ class VideoVault(VideoVaultCore):
                         print(f"Error processing file {file_path}: {e}")
                 
                 print(f"File processing complete. {len(imported_files)} files imported.")
-                # Schedule callback on main thread
                 Clock.schedule_once(lambda dt: self.finish_import(imported_files, callback, move_files), 0)
                 
             except Exception as e:
                 print(f"Error processing files: {e}")
                 Clock.schedule_once(lambda dt: self.finish_import([], callback, move_files), 0)
         
-        # Run file operations in background thread
         thread = threading.Thread(target=process_files_worker)
         thread.daemon = True
         thread.start()
@@ -674,6 +699,7 @@ def cleanup_temp_files():
                     pass
     except Exception as e:
         print(f"Error cleaning temp files: {e}")
+
 
 def get_vault_statistics(vault_instance):
     """Get statistics about the video vault"""

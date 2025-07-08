@@ -599,13 +599,8 @@ class VideoVaultCoreExtended(VideoVaultCore):
             if not os.path.exists(video_path):
                 return {'success': False, 'error': 'Video not found'}
             
-            # Get original filename (remove vault_ prefix)
-            vault_filename = os.path.basename(video_path)
-            match = re.match(r'vault_\d{8}_\d{6}_\d+_(.+)', vault_filename)
-            if match:
-                original_name = match.group(1)
-            else:
-                original_name = vault_filename
+            # FIXED: Just use the actual filename (no more vault_ prefix handling)
+            original_name = os.path.basename(video_path)
             
             if not user_selected_folder:
                 return {'success': False, 'error': 'No export folder selected', 'needs_folder_selection': True}

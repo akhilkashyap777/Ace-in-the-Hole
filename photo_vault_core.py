@@ -220,10 +220,17 @@ class PhotoVaultCore:
                             skipped_files.append(f"{os.path.basename(file_path)} (not an image)")
                             continue
                         
-                        # Generate unique filename
-                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                        filename = f"vault_{timestamp}_{os.path.basename(file_path)}"
-                        destination = os.path.join(self.vault_dir, filename)
+                        # Keep original filename with conflict resolution
+                        original_filename = os.path.basename(file_path)
+                        destination = os.path.join(self.vault_dir, original_filename)
+                        
+                        # Handle filename conflicts
+                        counter = 1
+                        while os.path.exists(destination):
+                            name_part, ext_part = os.path.splitext(original_filename)
+                            new_filename = f"{name_part} ({counter}){ext_part}"
+                            destination = os.path.join(self.vault_dir, new_filename)
+                            counter += 1
                         
                         # Copy file to vault directory
                         shutil.copy2(file_path, destination)
@@ -239,6 +246,11 @@ class PhotoVaultCore:
             except Exception as e:
                 print(f"Error processing files: {e}")
                 Clock.schedule_once(lambda dt: self.finish_import([], [], callback), 0)
+        
+        # Run file operations in background thread
+        thread = threading.Thread(target=process_files)
+        thread.daemon = True
+        thread.start()
         
         # Run file operations in background thread
         thread = threading.Thread(target=process_files)
@@ -302,13 +314,8 @@ class PhotoVaultCore:
             if not os.path.exists(photo_path):
                 return {'success': False, 'error': 'Photo not found'}
             
-            # Get original filename (remove vault_ prefix)
-            vault_filename = os.path.basename(photo_path)
-            match = re.match(r'vault_\d{8}_\d{6}_\d+_(.+)', vault_filename)
-            if match:
-                original_name = match.group(1)
-            else:
-                original_name = vault_filename
+            # Use the actual filename (no more vault prefix removal needed)
+            original_name = os.path.basename(photo_path)
             
             if not user_selected_folder:
                 return {'success': False, 'error': 'No export folder selected', 'needs_folder_selection': True}

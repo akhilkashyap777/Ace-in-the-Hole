@@ -824,7 +824,6 @@ def test_secure_storage():
     print(f"   Folder mappings: {info['folder_mapping']}")
     print(f"   Nesting depth: {info['nesting_depth']} levels")
     
-    # Show cache stats
     cache_stats = storage.get_cache_stats()
     print(f"\n💾 Cache Stats: {cache_stats}")
     
