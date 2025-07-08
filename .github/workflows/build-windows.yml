@@ -2,9 +2,9 @@ name: Build Windows Executable
 
 on:
   push:
-    branches: [ imports-removed-backup ]
+    branches: [ microsoft-store-submission ]  # Updated to your new branch
   pull_request:
-    branches: [ imports-removed-backup ]
+    branches: [ microsoft-store-submission ]
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5  # Updated to latest version
       with:
         python-version: '3.11'
     
@@ -24,42 +24,122 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install nuitka
-        pip install kivymd
-        pip install kivy
-        pip install pillow
-        pip install requests
-        pip install qrcode
-        pip install bcrypt
-        pip install cryptography
-        pip install pygame
-        pip install plyer
-        pip install opencv-python
-        pip install openpyxl
-        pip install docx2txt
-        pip install mutagen
-        pip install imageio
-        pip install imageio_ffmpeg
-        pip install psutil
+        # Install from your requirements.txt (more reliable)
+        pip install cryptography==45.0.5
+        pip install kivy==2.3.1
+        pip install kivymd==1.2.0
+        pip install pillow==11.3.0
+        pip install qrcode==8.2
+        pip install bcrypt  # Use bcrypt instead of python_bcrypt for Windows
+        pip install pygame==2.6.1
+        pip install plyer==2.1.0
+        pip install mutagen==1.47.0
+        pip install imageio==2.37.0
+        pip install imageio-ffmpeg==0.6.0
+        pip install psutil==7.0.0
+        # Removed packages that might cause issues:
+        # opencv-python (cv2) - large and often problematic
+        # openpyxl - not in your requirements
+        # docx2txt - not in your requirements
+        # jnius - Android-specific
     
-    - name: Build Windows executable
+    - name: Install Windows-specific dependencies
       run: |
-        python -m nuitka --standalone --include-package=kivymd --include-package=kivy --include-package=PIL --include-package=requests --include-package=qrcode --include-package=bcrypt --include-package=cryptography --include-package=pygame --include-package=plyer --include-package=cv2 --include-package=openpyxl --include-package=docx2txt --include-package=mutagen --include-package=imageio --include-package=psutil --windows-disable-console --output-filename=AceInTheHole-Windows.exe --assume-yes-for-downloads main.py
+        # Install Visual C++ build tools dependencies
+        pip install wheel setuptools
+    
+    - name: Build Windows executable with Nuitka
+      run: |
+        python -m nuitka ^
+          --standalone ^
+          --onefile ^
+          --include-package=kivymd ^
+          --include-package=kivy ^
+          --include-package=PIL ^
+          --include-package=qrcode ^
+          --include-package=bcrypt ^
+          --include-package=cryptography ^
+          --include-package=pygame ^
+          --include-package=plyer ^
+          --include-package=mutagen ^
+          --include-package=imageio ^
+          --include-package=psutil ^
+          --include-data-files=*.kv=. ^
+          --include-data-files=*.png=. ^
+          --windows-disable-console ^
+          --output-filename=AceInTheHole-Windows.exe ^
+          --assume-yes-for-downloads ^
+          --show-progress ^
+          main.py
+    
+    - name: List build output (for debugging)
+      run: |
+        dir /s *.exe
+        echo "Build directory contents:"
+        dir
     
     - name: Upload Windows executable
       uses: actions/upload-artifact@v4
       with:
         name: AceInTheHole-Windows-Executable
-        path: main.dist/
+        path: |
+          *.exe
+          main.dist/
         retention-days: 30
+        if-no-files-found: error
     
     - name: Create release info
       run: |
         echo "Build completed successfully!" > build-info.txt
+        echo "Built with Nuitka on Windows" >> build-info.txt
         echo "Download the AceInTheHole-Windows-Executable artifact" >> build-info.txt
         echo "Extract and run AceInTheHole-Windows.exe" >> build-info.txt
+        echo "Build date: %date% %time%" >> build-info.txt
     
     - name: Upload build info
       uses: actions/upload-artifact@v4
       with:
         name: Build-Instructions
         path: build-info.txt
+
+  # Optional: Alternative build with PyInstaller as backup
+  build-windows-pyinstaller:
+    runs-on: windows-latest
+    if: failure()  # Only run if Nuitka build fails
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install cryptography==45.0.5
+        pip install kivy==2.3.1
+        pip install kivymd==1.2.0
+        pip install pillow==11.3.0
+        pip install qrcode==8.2
+        pip install bcrypt
+        pip install pygame==2.6.1
+        pip install plyer==2.1.0
+        pip install mutagen==1.47.0
+        pip install imageio==2.37.0
+        pip install imageio-ffmpeg==0.6.0
+        pip install psutil==7.0.0
+    
+    - name: Build with PyInstaller (backup method)
+      run: |
+        pyinstaller --onefile --windowed --add-data "*.kv;." --add-data "*.png;." --name=AceInTheHole-Windows-PyInstaller main.py
+    
+    - name: Upload PyInstaller executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: AceInTheHole-Windows-PyInstaller-Backup
+        path: dist/
+        retention-days: 30
