@@ -66,8 +66,8 @@ jobs:
         --include-package=imageio `
         --include-package=psutil `
         --include-package=tkinter `
-        --include-data-files=icon.png=. `
-        --include-data-files=file_transfer_ui.html=. `
+        --include-data-files=icon.png=icon.png `
+        --include-data-files=file_transfer_ui.html=file_transfer_ui.html `
         main.py
     
     - name: Verify build
