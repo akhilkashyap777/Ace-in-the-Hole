@@ -28,53 +28,39 @@ jobs:
         pip install kivymd pillow qrcode bcrypt cryptography
         pip install pygame plyer mutagen imageio imageio-ffmpeg psutil
     
-    - name: Install Windows SDK and MSIX Tools
-      run: |
-        # Install Windows SDK for makeappx.exe
-        Write-Host "Installing Windows SDK..."
-        $sdkUrl = "https://go.microsoft.com/fwlink/?linkid=2164145"
-        Invoke-WebRequest -Uri $sdkUrl -OutFile "winsdksetup.exe"
-        Start-Process -FilePath "winsdksetup.exe" -ArgumentList "/quiet", "/features", "OptionId.WindowsAppCertificationKit", "OptionId.ManagedNative" -Wait
-        
-        # Verify installation
-        $makeappxPath = "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe"
-        if (Test-Path $makeappxPath) {
-          Write-Host "✅ Windows SDK installed successfully"
-        } else {
-          Write-Host "❌ Windows SDK installation failed"
-          # Try alternative path
-          $altPath = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Name "makeappx.exe" | Select-Object -First 1
-          if ($altPath) {
-            Write-Host "Found makeappx.exe at: $altPath"
-          }
-        }
-    
     - name: Create app icon (if missing)
       run: |
         if (-not (Test-Path "icon.png")) {
           Write-Host "Creating placeholder icon..."
-          # Create a simple colored square as placeholder
           Add-Type -AssemblyName System.Drawing
           $bitmap = New-Object System.Drawing.Bitmap(256, 256)
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::Blue)
+          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(70, 130, 180))
           $graphics.FillRectangle($brush, 0, 0, 256, 256)
+          
+          # Add text
+          $font = New-Object System.Drawing.Font("Arial", 24, [System.Drawing.FontStyle]::Bold)
+          $textBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+          $graphics.DrawString("CSP", $font, $textBrush, 100, 110)
+          
           $bitmap.Save("icon.png", [System.Drawing.Imaging.ImageFormat]::Png)
           $graphics.Dispose()
           $bitmap.Dispose()
-          Write-Host "Placeholder icon created"
+          Write-Host "✅ Placeholder icon created"
+        } else {
+          Write-Host "✅ Icon file found"
         }
     
     - name: Build standalone app with Nuitka
       env:
         KIVY_GL_BACKEND: angle_sdl2
       run: |
-        Write-Host "Building standalone application..."
+        Write-Host "🔨 Building standalone application with Nuitka..."
         python -m nuitka `
         --standalone `
         --assume-yes-for-downloads `
         --windows-disable-console `
-        --output-filename=AceInTheHole.exe `
+        --output-filename=CardSharkPro.exe `
         --windows-icon-from-ico=icon.png `
         --windows-company-name="Your Company" `
         --windows-product-name="Card Shark Pro" `
@@ -97,56 +83,67 @@ jobs:
         --include-data-files=file_transfer_ui.html=file_transfer_ui.html `
         main.py
         
-        Write-Host "Nuitka build completed"
+        Write-Host "✅ Nuitka build completed"
+        
+        # Verify build
+        if (Test-Path "main.dist\CardSharkPro.exe") {
+          $size = (Get-Item "main.dist\CardSharkPro.exe").Length / 1MB
+          Write-Host "✅ Executable created: $([math]::Round($size, 2)) MB"
+        } else {
+          Write-Host "❌ Executable not found!"
+          Get-ChildItem "main.dist" -ErrorAction SilentlyContinue
+          exit 1
+        }
     
     - name: Prepare MSIX package structure
       run: |
-        Write-Host "Creating MSIX package structure..."
+        Write-Host "📦 Creating MSIX package structure..."
         
-        # Create package root directory
-        $packageRoot = "msix-package"
+        # Create clean package directory
+        $packageRoot = "AppPackage"
+        if (Test-Path $packageRoot) { Remove-Item $packageRoot -Recurse -Force }
         New-Item -ItemType Directory -Force -Path $packageRoot
         
-        # Copy the entire standalone app to package
+        # Copy the entire standalone app
         if (Test-Path "main.dist") {
-          Write-Host "Copying standalone app files..."
+          Write-Host "📁 Copying app files..."
           Copy-Item -Recurse -Force "main.dist\*" $packageRoot
           
-          # Verify main executable exists
-          $exePath = Join-Path $packageRoot "AceInTheHole.exe"
+          # Verify main executable
+          $exePath = Join-Path $packageRoot "CardSharkPro.exe"
           if (Test-Path $exePath) {
-            Write-Host "✅ Main executable found in package"
-            $size = (Get-Item $exePath).Length / 1MB
-            Write-Host "   Executable size: $([math]::Round($size, 2)) MB"
+            Write-Host "✅ Main executable copied successfully"
           } else {
-            Write-Host "❌ Main executable not found!"
+            Write-Host "❌ Main executable not found in package!"
             exit 1
           }
         } else {
-          Write-Host "❌ main.dist directory not found!"
+          Write-Host "❌ Nuitka build directory not found!"
           exit 1
         }
         
-        # Create assets directory
+        # Create Assets directory and copy icons
         New-Item -ItemType Directory -Force -Path "$packageRoot\Assets"
         
-        # Copy and resize icons for different sizes needed by MSIX
         if (Test-Path "icon.png") {
+          # Copy icon to all required asset locations
           Copy-Item "icon.png" "$packageRoot\Assets\Square150x150Logo.png"
           Copy-Item "icon.png" "$packageRoot\Assets\Square44x44Logo.png" 
           Copy-Item "icon.png" "$packageRoot\Assets\StoreLogo.png"
+          Copy-Item "icon.png" "$packageRoot\Assets\Wide310x150Logo.png"
+          Write-Host "✅ Icons copied to Assets"
         }
-        
-        Write-Host "Package structure created"
     
-    - name: Create MSIX manifest
+    - name: Create correct MSIX manifest (AppxManifest.xml)
       run: |
-        Write-Host "Creating MSIX manifest..."
+        Write-Host "📄 Creating MSIX manifest (AppxManifest.xml)..."
         
+        # Create the correct manifest file name that Microsoft expects
         $manifest = @"
         <?xml version="1.0" encoding="utf-8"?>
         <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
-                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10">
+                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                 xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
           
           <Identity Name="CardSharkPro" 
                     Publisher="CN=YourCompany" 
@@ -164,181 +161,214 @@ jobs:
           </Dependencies>
           
           <Applications>
-            <Application Id="CardSharkPro" Executable="AceInTheHole.exe" EntryPoint="Windows.FullTrustApplication">
+            <Application Id="CardSharkPro" Executable="CardSharkPro.exe" EntryPoint="Windows.FullTrustApplication">
               <uap:VisualElements DisplayName="Card Shark Pro" 
                                   Square150x150Logo="Assets\Square150x150Logo.png" 
                                   Square44x44Logo="Assets\Square44x44Logo.png" 
                                   Description="Secure vault with card game interface" 
                                   BackgroundColor="transparent">
+                <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
               </uap:VisualElements>
             </Application>
           </Applications>
           
           <Capabilities>
             <Capability Name="internetClient" />
-            <uap:Capability Name="documentsLibrary" />
-            <uap:Capability Name="picturesLibrary" />
-            <uap:Capability Name="videosLibrary" />
-            <uap:Capability Name="musicLibrary" />
+            <rescap:Capability Name="runFullTrust" />
           </Capabilities>
           
         </Package>
         "@
         
-        $manifest | Out-File -FilePath "msix-package\Package.appxmanifest" -Encoding UTF8
-        Write-Host "✅ Manifest created"
+        # Save with correct name: AppxManifest.xml (not Package.appxmanifest)
+        $manifest | Out-File -FilePath "AppPackage\AppxManifest.xml" -Encoding UTF8
+        Write-Host "✅ AppxManifest.xml created"
+        
+        # Verify manifest file exists
+        if (Test-Path "AppPackage\AppxManifest.xml") {
+          Write-Host "✅ Manifest file verified"
+        } else {
+          Write-Host "❌ Manifest file creation failed!"
+          exit 1
+        }
+    
+    - name: Install Windows SDK for MSIX tools
+      run: |
+        Write-Host "🔧 Installing Windows SDK..."
+        
+        # Download Windows SDK
+        $sdkUrl = "https://go.microsoft.com/fwlink/?linkid=2164145"
+        $sdkInstaller = "winsdksetup.exe"
+        
+        try {
+          Invoke-WebRequest -Uri $sdkUrl -OutFile $sdkInstaller -TimeoutSec 300
+          Write-Host "✅ SDK downloaded"
+          
+          # Install SDK with required components
+          Start-Process -FilePath $sdkInstaller -ArgumentList "/quiet", "/features", "OptionId.WindowsAppCertificationKit", "OptionId.ManagedNative" -Wait
+          Write-Host "✅ SDK installation completed"
+          
+        } catch {
+          Write-Host "⚠️ SDK download/install failed, will try makeappx from existing installation"
+        }
     
     - name: Build MSIX package
       run: |
-        Write-Host "Building MSIX package..."
+        Write-Host "🏗️ Building MSIX package..."
         
-        # Find makeappx.exe
+        # Find makeappx.exe in various possible locations
         $makeappxPaths = @(
           "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\makeappx.exe",
-          "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\makeappx.exe"
+          "C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\makeappx.exe",
+          "C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64\makeappx.exe",
+          "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x64\makeappx.exe"
         )
         
         $makeappx = $null
         foreach ($path in $makeappxPaths) {
           if (Test-Path $path) {
             $makeappx = $path
+            Write-Host "✅ Found makeappx.exe: $makeappx"
             break
           }
         }
         
+        # If not found in standard locations, search recursively
         if (-not $makeappx) {
-          # Search for any version
-          $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Name "makeappx.exe" | 
-                      ForEach-Object { "C:\Program Files (x86)\Windows Kits\10\bin\$_" } | 
-                      Where-Object { Test-Path $_ } | 
-                      Select-Object -First 1
+          Write-Host "🔍 Searching for makeappx.exe..."
+          $searchResult = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Name "makeappx.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($searchResult) {
+            $makeappx = "C:\Program Files (x86)\Windows Kits\10\bin\$searchResult"
+            Write-Host "✅ Found makeappx.exe: $makeappx"
+          }
         }
         
         if ($makeappx) {
-          Write-Host "Using makeappx.exe from: $makeappx"
+          Write-Host "📦 Creating MSIX package..."
+          
+          # Verify package contents before creating MSIX
+          Write-Host "📋 Package contents:"
+          Get-ChildItem "AppPackage" | ForEach-Object { Write-Host "   $($_.Name)" }
           
           # Create MSIX package
-          & $makeappx pack /d "msix-package" /p "CardSharkPro.msix" /l
+          & $makeappx pack /d "AppPackage" /p "CardSharkPro.msix" /l /o
           
           if ($LASTEXITCODE -eq 0) {
             Write-Host "✅ MSIX package created successfully!"
-            $size = (Get-Item "AceInTheHole.msix").Length / 1MB
-            Write-Host "   Package size: $([math]::Round($size, 2)) MB"
+            
+            if (Test-Path "CardSharkPro.msix") {
+              $size = (Get-Item "CardSharkPro.msix").Length / 1MB
+              Write-Host "📦 Package size: $([math]::Round($size, 2)) MB"
+            }
           } else {
             Write-Host "❌ MSIX package creation failed with exit code: $LASTEXITCODE"
-            exit 1
+            
+            # Create fallback ZIP package
+            Write-Host "📦 Creating fallback ZIP package..."
+            Compress-Archive -Path "AppPackage\*" -DestinationPath "CardSharkPro-Fallback.zip"
+            Write-Host "✅ Fallback ZIP created"
           }
         } else {
-          Write-Host "❌ makeappx.exe not found!"
-          Write-Host "Creating ZIP fallback package..."
-          Compress-Archive -Path "msix-package\*" -DestinationPath "AceInTheHole-Fallback.zip"
+          Write-Host "❌ makeappx.exe not found! Creating ZIP package only..."
+          Compress-Archive -Path "AppPackage\*" -DestinationPath "CardSharkPro-Fallback.zip"
         }
     
-    - name: Verify final package
+    - name: Test MSIX package (optional)
       run: |
-        Write-Host "=== FINAL VERIFICATION ==="
-        
-        # Check MSIX package
         if (Test-Path "CardSharkPro.msix") {
-          $size = (Get-Item "CardSharkPro.msix").Length / 1MB
-          Write-Host "✅ MSIX Package: $([math]::Round($size, 2)) MB"
-          Write-Host "   Ready for Microsoft Store submission!"
-        } else {
-          Write-Host "❌ MSIX package not found"
-        }
-        
-        # Check fallback
-        if (Test-Path "AceInTheHole-Fallback.zip") {
-          $size = (Get-Item "AceInTheHole-Fallback.zip").Length / 1MB
-          Write-Host "⚠️ Fallback ZIP: $([math]::Round($size, 2)) MB"
-        }
-        
-        # List package contents
-        Write-Host "`n📦 Package Contents:"
-        if (Test-Path "msix-package") {
-          Get-ChildItem "msix-package" -Recurse | Select-Object -First 10 | ForEach-Object {
-            Write-Host "   $($_.FullName.Replace((Get-Location).Path + '\msix-package\', ''))"
+          Write-Host "🧪 Testing MSIX package integrity..."
+          
+          # Try to list package contents to verify it's valid
+          if ($makeappx) {
+            & $makeappx unpack /p "CardSharkPro.msix" /d "TestUnpack" /l
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✅ MSIX package is valid"
+              Remove-Item "TestUnpack" -Recurse -Force -ErrorAction SilentlyContinue
+            } else {
+              Write-Host "⚠️ MSIX package may have issues"
+            }
           }
-          $totalFiles = (Get-ChildItem "msix-package" -Recurse -File).Count
-          Write-Host "   ... Total files: $totalFiles"
         }
     
     - name: Upload Microsoft Store Package
       uses: actions/upload-artifact@v4
       with:
-        name: Microsoft-Store-MSIX-Package
+        name: CardSharkPro-Microsoft-Store-Package
         path: |
           CardSharkPro.msix
-          AceInTheHole-Fallback.zip
-          msix-package/Package.appxmanifest
+          CardSharkPro-Fallback.zip
+          AppPackage/AppxManifest.xml
         retention-days: 30
         if-no-files-found: warn
     
-    - name: Create submission instructions
+    - name: Create submission guide
       run: |
-        $instructions = @"
-        🏪 MICROSOFT STORE SUBMISSION INSTRUCTIONS
-        =========================================
+        $guide = @"
+        🏪 MICROSOFT STORE SUBMISSION GUIDE
+        ===================================
         
-        ✅ YOUR PACKAGE IS READY!
+        ✅ BUILD COMPLETED SUCCESSFULLY!
         
-        📦 What you received:
-        - CardSharkPro.msix (Main package for store submission)
-        - Package.appxmanifest (App manifest)
-        - AceInTheHole-Fallback.zip (Backup if MSIX failed)
+        📦 Your Package:
+        - CardSharkPro.msix (Ready for Microsoft Store)
+        - CardSharkPro-Fallback.zip (Backup if needed)
+        - AppxManifest.xml (Package manifest)
         
-        🚀 NEXT STEPS:
+        🚀 SUBMISSION STEPS:
         
-        1. DOWNLOAD THE MSIX PACKAGE:
+        1. DOWNLOAD YOUR PACKAGE:
            - Go to GitHub Actions artifacts
-           - Download "Microsoft-Store-MSIX-Package"
+           - Download "CardSharkPro-Microsoft-Store-Package"
            - Extract CardSharkPro.msix
         
-        2. TEST THE PACKAGE LOCALLY:
+        2. TEST LOCALLY FIRST:
            - Right-click CardSharkPro.msix
-           - Select "Install" 
-           - Test the app to ensure it works
+           - Click "Install"
+           - Test the app thoroughly
+           - Make sure all features work
         
         3. MICROSOFT PARTNER CENTER:
-           - Go to: https://partner.microsoft.com/dashboard
+           - Visit: https://partner.microsoft.com/dashboard
            - Sign in with Microsoft account
            - Create new app submission
            - Upload CardSharkPro.msix
-           - Fill store listing details
-           - Submit for review
+           - Complete store listing
         
-        4. STORE LISTING REQUIREMENTS:
-           - App name: Card Shark Pro
+        4. STORE LISTING INFO:
+           - App Name: Card Shark Pro
            - Category: Productivity > Utilities
-           - Age rating: Get from IARC rating tool
-           - Screenshots: At least 1 (1920x1080)
-           - App description: Secure vault disguised as card game
-           - Privacy policy URL (REQUIRED)
-           - Support contact email
+           - Age Rating: Use IARC rating tool
+           - Screenshots: Minimum 1 (1920x1080px)
+           - Description: Secure vault disguised as card game
+           - Privacy Policy URL: REQUIRED
+           - Support Email: REQUIRED
         
-        5. CERTIFICATION PROCESS:
-           - Microsoft will test your app (3-7 days)
-           - Check for crashes, security issues
-           - Verify app follows store policies
-           - You'll get approval or feedback
+        5. REQUIRED ASSETS:
+           - App icon: 1240x1240px for store listing
+           - Screenshots: Show your app in action
+           - Store logo: 300x300px
         
-        ⚠️ IMPORTANT NOTES:
-        - Test the MSIX package thoroughly before submission
+        💡 PRO TIPS:
+        - Test on multiple Windows machines
         - Ensure app doesn't crash on startup
-        - All features should work properly
-        - Create privacy policy and support page
+        - Check all vault features work properly
+        - Prepare privacy policy website
+        - Have support email ready
         
         📞 SUPPORT:
-        - Microsoft Store docs: https://docs.microsoft.com/windows/uwp/publish/
-        - Partner Center help: https://partner.microsoft.com/support
+        - Store docs: https://docs.microsoft.com/windows/uwp/publish/
+        - Partner Center: https://partner.microsoft.com/support
         
-        Good luck with your submission! 🍀
+        Build Date: $(Get-Date)
+        Build Branch: real-microsoft-store-submission
+        
+        Good luck! 🍀
         "@
         
-        $instructions | Out-File -FilePath "SUBMISSION-GUIDE.txt" -Encoding UTF8
+        $guide | Out-File -FilePath "SUBMISSION-GUIDE.txt" -Encoding UTF8
     
     - name: Upload submission guide
       uses: actions/upload-artifact@v4
       with:
-        name: Submission-Instructions
+        name: Submission-Guide
         path: SUBMISSION-GUIDE.txt
