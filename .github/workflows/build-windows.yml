@@ -1,4 +1,4 @@
-name: Build windows executable buildd
+name: Build windows executable build
 
 on:
   push:
