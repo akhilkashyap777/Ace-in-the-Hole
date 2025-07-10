@@ -2,9 +2,9 @@ name: Build Windows Executable
 
 on:
   push:
-    branches: [ microsoft-store-submission ]
+    branches: [ real-microsoft-store-submission ]
   pull_request:
-    branches: [ microsoft-store-submission ]
+    branches: [ real-microsoft-store-submission ]
   workflow_dispatch:
 
 jobs:
