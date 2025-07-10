@@ -241,10 +241,6 @@ class VaultApp(MDApp):
         ("wifi", "File Transfer", "Share files via WiFi", "show_file_transfer")
     )
     
-    # Key mappings as frozenset for efficient lookup
-    UP_KEYS = frozenset({24, 273})
-    DOWN_KEYS = frozenset({25, 274})
-    
     def __init__(self):
         super().__init__()
         
@@ -442,11 +438,21 @@ class VaultApp(MDApp):
             game_widget.game.show_cards()
     
     def on_key_down(self, window, key, scancode, codepoint, modifier):
-        """Handle volume button presses - optimized version"""
+        """Handle key presses - filter out mouse events"""
         
-        if key in self.UP_KEYS:
+        # Filter out mouse wheel events by checking scancode
+        # Mouse wheel events typically have scancode 0
+        if scancode == 0:
+            return False
+        
+        # Filter out invalid/mouse key codes
+        if key < 0 or key > 512:
+            return False
+        
+        # Only respond to actual keyboard arrow keys
+        if key == 273:  # Up arrow
             button = 'up'
-        elif key in self.DOWN_KEYS:
+        elif key == 274:  # Down arrow
             button = 'down'
         else:
             return False

@@ -1,4 +1,6 @@
 import os
+import gc
+import weakref
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.button import MDRaisedButton, MDFlatButton
@@ -33,6 +35,10 @@ class AudioVaultWidget(MDBoxLayout):
         self._search_timer = None
         self._is_destroyed = False
         
+        # Track widgets for proper cleanup
+        self._active_audio_widgets = []  # Track current audio widgets
+        self._widget_cleanup_refs = {}   # Weak references for cleanup tracking
+        
         self.md_bg_color = [0.37, 0.49, 0.55, 1]
         
         self.create_header()
@@ -44,21 +50,86 @@ class AudioVaultWidget(MDBoxLayout):
         Clock.schedule_once(lambda dt: self.refresh_audio_vault(), 0.1)
     
     def cleanup(self):
+        """Enhanced cleanup with explicit garbage collection"""
         self._is_destroyed = True
         
+        # Cancel search timer
         if self._search_timer:
             self._search_timer.cancel()
             self._search_timer = None
         
+        # Clean up sort menu
         if self.sort_menu:
             self.sort_menu.dismiss()
             self.sort_menu = None
         
+        # Unbind search input
         if hasattr(self, 'search_input') and self.search_input:
             self.search_input.unbind(text=self.on_search_text_change)
         
+        # SAFE GARBAGE COLLECTION - Clean up audio widgets
+        self._cleanup_audio_widgets_safely()
+        
+        # Clear audio grid
         if hasattr(self, 'audio_grid'):
             self.audio_grid.clear_widgets()
+    
+    def _cleanup_audio_widgets_safely(self):
+        """
+        Safely clean up audio widgets with explicit garbage collection
+        Only cleans up widgets that are truly unused
+        """
+        print("🧹 Starting safe audio widget cleanup...")
+        
+        # Clean up textures from current widgets before removing them
+        for widget in self._active_audio_widgets:
+            try:
+                if widget and hasattr(widget, 'children'):
+                    self._cleanup_widget_textures_safe(widget)
+            except ReferenceError:
+                # Widget already garbage collected - this is fine
+                pass
+        
+        # Clear our tracking lists
+        self._active_audio_widgets.clear()
+        
+        # Clean up weak references that are no longer valid
+        dead_refs = []
+        for widget_id, weak_ref in self._widget_cleanup_refs.items():
+            if weak_ref() is None:  # Object was garbage collected
+                dead_refs.append(widget_id)
+        
+        for widget_id in dead_refs:
+            del self._widget_cleanup_refs[widget_id]
+        
+        print(f"🧹 Cleaned up {len(dead_refs)} unused widget references")
+        
+        # Force garbage collection ONLY after we've cleaned up references
+        # This is safe because we've removed all our references first
+        gc.collect()
+        print("🧹 Safe garbage collection completed")
+    
+    def _cleanup_widget_textures_safe(self, widget):
+        """
+        Safely clean up textures from a widget tree
+        Only touches textures that are no longer needed
+        """
+        if not widget:
+            return
+            
+        try:
+            # Walk through widget tree and clean up Image widgets
+            for child in widget.walk():
+                if isinstance(child, Image) and hasattr(child, 'texture'):
+                    if child.texture:
+                        # This is safe - we're removing our reference to the texture
+                        # Kivy will handle the actual GPU cleanup
+                        child.texture = None
+                        child.source = ''  # Clear source to prevent reloading
+                        
+        except Exception as e:
+            # Don't let texture cleanup errors break the app
+            print(f"⚠️ Texture cleanup warning: {e}")
     
     def create_header(self):
         header = MDBoxLayout(
@@ -334,9 +405,14 @@ class AudioVaultWidget(MDBoxLayout):
             self.stats_label.text = "Error loading statistics"
     
     def refresh_audio_grid(self):
+        """Enhanced refresh with safe memory cleanup"""
         try:
             selected_audio_id = self.selected_audio['id'] if self.selected_audio else None
             
+            # SAFE CLEANUP: Clean up old widgets before creating new ones
+            self._cleanup_audio_widgets_safely()
+            
+            # Clear the grid AFTER cleanup
             self.audio_grid.clear_widgets()
             
             search_query = self.search_input.text.strip() if self.search_input.text else None
@@ -351,9 +427,17 @@ class AudioVaultWidget(MDBoxLayout):
                 self.audio_grid.add_widget(empty_widget)
                 return
             
+            # Create new widgets with tracking
             for audio_file in audio_files:
                 audio_widget = self.create_audio_widget(audio_file)
-                self.audio_grid.add_widget(audio_widget)
+                if audio_widget:
+                    self.audio_grid.add_widget(audio_widget)
+                    # Track the new widget for future cleanup
+                    self._active_audio_widgets.append(audio_widget)
+                    
+                    # Create weak reference for cleanup tracking
+                    widget_id = id(audio_widget)
+                    self._widget_cleanup_refs[widget_id] = weakref.ref(audio_widget)
                 
                 if selected_audio_id and audio_file['id'] == selected_audio_id:
                     self.selected_audio = audio_file
@@ -397,6 +481,10 @@ class AudioVaultWidget(MDBoxLayout):
         return empty_card
     
     def create_audio_widget(self, audio_file):
+        """
+        Create audio widget with memory-safe thumbnail handling
+        This is the main function we're fixing for memory leaks
+        """
         is_selected = self.selected_audio and self.selected_audio['id'] == audio_file['id']
         
         audio_card = MDCard(
@@ -410,6 +498,7 @@ class AudioVaultWidget(MDBoxLayout):
             ripple_behavior=True
         )
         
+        # Icon container - MEMORY SAFE APPROACH
         icon_container = MDBoxLayout(
             orientation='vertical',
             size_hint_x=None,
@@ -417,30 +506,12 @@ class AudioVaultWidget(MDBoxLayout):
             padding=[5, 5]
         )
         
-        if audio_file.get('thumbnail_path') and os.path.exists(audio_file['thumbnail_path']):
-            try:
-                thumbnail = Image(
-                    source=audio_file['thumbnail_path'],
-                    size_hint=(1, 1)
-                )
-            except:
-                thumbnail = MDLabel(
-                    text='🎵',
-                    font_style="H4",
-                    halign="center",
-                    text_color="white"
-                )
-        else:
-            thumbnail = MDLabel(
-                text='🎵',
-                font_style="H4", 
-                halign="center",
-                text_color="white"
-            )
-        
-        icon_container.add_widget(thumbnail)
+        # SAFE THUMBNAIL LOADING - Only load if really needed and cleanup properly
+        thumbnail_widget = self._create_safe_thumbnail_widget(audio_file)
+        icon_container.add_widget(thumbnail_widget)
         audio_card.add_widget(icon_container)
         
+        # Info layout (unchanged - no memory issues here)
         info_layout = MDBoxLayout(
             orientation='vertical',
             size_hint_x=0.6,
@@ -484,6 +555,7 @@ class AudioVaultWidget(MDBoxLayout):
         
         audio_card.add_widget(info_layout)
         
+        # Button layout (unchanged - no memory issues here)
         button_layout = MDBoxLayout(
             orientation='horizontal',
             size_hint_x=None,
@@ -516,6 +588,50 @@ class AudioVaultWidget(MDBoxLayout):
         audio_card.bind(on_release=lambda x: self.select_audio_file(audio_file))
         
         return audio_card
+    
+    def _create_safe_thumbnail_widget(self, audio_file):
+        """
+        Create thumbnail widget with memory safety
+        This prevents the texture memory leak
+        """
+        try:
+            thumbnail_path = audio_file.get('thumbnail_path')
+            
+            # Check if thumbnail exists and is accessible
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                try:
+                    # Create Image widget - this is where the potential leak was
+                    thumbnail = Image(
+                        source=thumbnail_path,
+                        size_hint=(1, 1)
+                    )
+                    
+                    # The memory leak was that these textures weren't cleaned up
+                    # Our fix is in _cleanup_widget_textures_safe() which will
+                    # properly clean up these textures when the widget is refreshed
+                    
+                    return thumbnail
+                    
+                except Exception as e:
+                    # If image loading fails, fall back to text icon
+                    print(f" Thumbnail load failed for {thumbnail_path}: {e}")
+                    return self._create_fallback_icon()
+            else:
+                # No thumbnail available - use text icon (no memory leak)
+                return self._create_fallback_icon()
+                
+        except Exception as e:
+            print(f"⚠️ Thumbnail creation error: {e}")
+            return self._create_fallback_icon()
+    
+    def _create_fallback_icon(self):
+        """Create text-based fallback icon (no memory leak potential)"""
+        return MDLabel(
+            text='🎵',
+            font_style="H4",
+            halign="center",
+            text_color="white"
+        )
     
     def select_audio_file(self, audio_file):
         self.selected_audio = audio_file
@@ -604,6 +720,7 @@ class AudioVaultWidget(MDBoxLayout):
         self.selected_audio = None
     
     def back_to_vault(self, instance):
+        # Enhanced cleanup when leaving audio vault
         self.cleanup()
         
         if hasattr(self.audio_vault.app, 'show_vault_main'):
