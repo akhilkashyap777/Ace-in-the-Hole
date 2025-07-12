@@ -62,7 +62,7 @@ jobs:
         --windows-disable-console `
         --output-filename=CardSharkPro.exe `
         --windows-icon-from-ico=icon.png `
-        --windows-company-name="Your Company" `
+        --windows-company-name="shyapsneon" `
         --windows-product-name="Card Shark Pro" `
         --windows-file-version=1.0.0.0 `
         --windows-product-version=1.0.0.0 `
@@ -146,15 +146,19 @@ jobs:
                  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
           
           <Identity Name="CardSharkPro" 
-                    Publisher="CN=YourCompany" 
+                    Publisher="CN=shyapsneon" 
                     Version="1.0.0.0" />
           
           <Properties>
             <DisplayName>Card Shark Pro</DisplayName>
-            <PublisherDisplayName>Your Company</PublisherDisplayName>
+            <PublisherDisplayName>shyapsneon</PublisherDisplayName>
             <Logo>Assets\StoreLogo.png</Logo>
             <Description>A secure vault application disguised as a card game</Description>
           </Properties>
+          
+          <Resources>
+            <Resource Language="en-us" />
+          </Resources>
           
           <Dependencies>
             <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22000.0" />
