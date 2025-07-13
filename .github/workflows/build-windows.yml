@@ -28,28 +28,55 @@ jobs:
         pip install kivymd pillow qrcode bcrypt cryptography
         pip install pygame plyer mutagen imageio imageio-ffmpeg psutil
     
-    - name: Create app icon (if missing)
+    - name: Create proper Microsoft Store icons
       run: |
-        if (-not (Test-Path "icon.png")) {
-          Write-Host "Creating placeholder icon..."
-          Add-Type -AssemblyName System.Drawing
-          $bitmap = New-Object System.Drawing.Bitmap(256, 256)
+        Write-Host "🎨 Creating Microsoft Store compliant icons..."
+        Add-Type -AssemblyName System.Drawing
+        
+        # Create different sized icons required by Microsoft Store
+        $iconSizes = @(
+          @{Name="Square44x44Logo"; Size=44},
+          @{Name="Square150x150Logo"; Size=150},
+          @{Name="StoreLogo"; Size=50},
+          @{Name="Wide310x150Logo"; Width=310; Height=150}
+        )
+        
+        foreach ($icon in $iconSizes) {
+          if ($icon.Width) {
+            $bitmap = New-Object System.Drawing.Bitmap($icon.Width, $icon.Height)
+          } else {
+            $bitmap = New-Object System.Drawing.Bitmap($icon.Size, $icon.Size)
+          }
+          
           $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(70, 130, 180))
-          $graphics.FillRectangle($brush, 0, 0, 256, 256)
+          $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
           
-          # Add text
-          $font = New-Object System.Drawing.Font("Arial", 24, [System.Drawing.FontStyle]::Bold)
+          # Create gradient background
+          $rect = New-Object System.Drawing.Rectangle(0, 0, $bitmap.Width, $bitmap.Height)
+          $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush($rect, [System.Drawing.Color]::FromArgb(70, 130, 180), [System.Drawing.Color]::FromArgb(30, 90, 140), [System.Drawing.Drawing2D.LinearGradientMode]::Vertical)
+          $graphics.FillRectangle($brush, $rect)
+          
+          # Add text with proper scaling
+          $fontSize = [math]::Max(8, $bitmap.Width / 8)
+          $font = New-Object System.Drawing.Font("Arial", $fontSize, [System.Drawing.FontStyle]::Bold)
           $textBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
-          $graphics.DrawString("CSP", $font, $textBrush, 100, 110)
           
-          $bitmap.Save("icon.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          # Center text
+          $text = "CSP"
+          $textSize = $graphics.MeasureString($text, $font)
+          $x = ($bitmap.Width - $textSize.Width) / 2
+          $y = ($bitmap.Height - $textSize.Height) / 2
+          $graphics.DrawString($text, $font, $textBrush, $x, $y)
+          
+          $bitmap.Save("$($icon.Name).png", [System.Drawing.Imaging.ImageFormat]::Png)
           $graphics.Dispose()
           $bitmap.Dispose()
-          Write-Host "✅ Placeholder icon created"
-        } else {
-          Write-Host "✅ Icon file found"
+          Write-Host "✅ Created $($icon.Name).png"
         }
+        
+        # Create main app icon (copy from Square150x150Logo)
+        Copy-Item "Square150x150Logo.png" "icon.png"
+        Write-Host "✅ All Microsoft Store icons created"
     
     - name: Build standalone app with Nuitka
       env:
@@ -122,31 +149,33 @@ jobs:
           exit 1
         }
         
-        # Create Assets directory and copy icons
+        # Create Assets directory and copy Microsoft Store compliant icons
         New-Item -ItemType Directory -Force -Path "$packageRoot\Assets"
         
-        if (Test-Path "icon.png") {
-          # Copy icon to all required asset locations
-          Copy-Item "icon.png" "$packageRoot\Assets\Square150x150Logo.png"
-          Copy-Item "icon.png" "$packageRoot\Assets\Square44x44Logo.png" 
-          Copy-Item "icon.png" "$packageRoot\Assets\StoreLogo.png"
-          Copy-Item "icon.png" "$packageRoot\Assets\Wide310x150Logo.png"
-          Write-Host "✅ Icons copied to Assets"
+        # Copy all the properly sized icons
+        $iconFiles = @("Square44x44Logo.png", "Square150x150Logo.png", "StoreLogo.png", "Wide310x150Logo.png")
+        foreach ($iconFile in $iconFiles) {
+          if (Test-Path $iconFile) {
+            Copy-Item $iconFile "$packageRoot\Assets\$iconFile"
+            Write-Host "✅ Copied $iconFile to Assets"
+          } else {
+            Write-Host "⚠️ Warning: $iconFile not found"
+          }
         }
     
-    - name: Create correct MSIX manifest (AppxManifest.xml)
+    - name: Create correct MSIX manifest with proper Microsoft Store identity
       run: |
-        Write-Host "📄 Creating MSIX manifest (AppxManifest.xml)..."
+        Write-Host "📄 Creating MSIX manifest with correct Microsoft Store identity..."
         
-        # Create the correct manifest file name that Microsoft expects
+        # Create the manifest with EXACT values from Microsoft Store submission errors
         $manifest = @"
         <?xml version="1.0" encoding="utf-8"?>
         <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
                  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
                  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
           
-          <Identity Name="CardSharkPro" 
-                    Publisher="CN=shyapsneon" 
+          <Identity Name="shyapsneon.CardSharkPro" 
+                    Publisher="CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4" 
                     Version="1.0.0.0" />
           
           <Properties>
@@ -165,7 +194,7 @@ jobs:
           </Dependencies>
           
           <Applications>
-            <Application Id="CardSharkPro" Executable="CardSharkPro.exe" EntryPoint="Windows.FullTrustApplication">
+            <Application Id="shyapsneon.CardSharkPro" Executable="CardSharkPro.exe" EntryPoint="Windows.FullTrustApplication">
               <uap:VisualElements DisplayName="Card Shark Pro" 
                                   Square150x150Logo="Assets\Square150x150Logo.png" 
                                   Square44x44Logo="Assets\Square44x44Logo.png" 
@@ -184,13 +213,16 @@ jobs:
         </Package>
         "@
         
-        # Save with correct name: AppxManifest.xml (not Package.appxmanifest)
+        # Save with correct name: AppxManifest.xml
         $manifest | Out-File -FilePath "AppPackage\AppxManifest.xml" -Encoding UTF8
-        Write-Host "✅ AppxManifest.xml created"
+        Write-Host "✅ AppxManifest.xml created with correct Microsoft Store identity"
         
         # Verify manifest file exists
         if (Test-Path "AppPackage\AppxManifest.xml") {
           Write-Host "✅ Manifest file verified"
+          Write-Host "📋 Identity Name: shyapsneon.CardSharkPro"
+          Write-Host "📋 Publisher: CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4"
+          Write-Host "📋 Application ID: shyapsneon.CardSharkPro"
         } else {
           Write-Host "❌ Manifest file creation failed!"
           exit 1
@@ -253,6 +285,8 @@ jobs:
           # Verify package contents before creating MSIX
           Write-Host "📋 Package contents:"
           Get-ChildItem "AppPackage" | ForEach-Object { Write-Host "   $($_.Name)" }
+          Write-Host "📋 Assets contents:"
+          Get-ChildItem "AppPackage\Assets" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "   Assets\$($_.Name)" }
           
           # Create MSIX package
           & $makeappx pack /d "AppPackage" /p "CardSharkPro.msix" /l /o
@@ -318,6 +352,13 @@ jobs:
         - CardSharkPro-Fallback.zip (Backup if needed)
         - AppxManifest.xml (Package manifest)
         
+        🔧 FIXED ISSUES:
+        ✅ Package Identity: shyapsneon.CardSharkPro
+        ✅ Publisher ID: CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4
+        ✅ Application ID: shyapsneon.CardSharkPro
+        ✅ Microsoft Store compliant icons (multiple sizes)
+        ✅ Proper manifest structure
+        
         🚀 SUBMISSION STEPS:
         
         1. DOWNLOAD YOUR PACKAGE:
@@ -334,8 +375,8 @@ jobs:
         3. MICROSOFT PARTNER CENTER:
            - Visit: https://partner.microsoft.com/dashboard
            - Sign in with Microsoft account
-           - Create new app submission
-           - Upload CardSharkPro.msix
+           - Go to your existing app submission
+           - Upload CardSharkPro.msix (should now work!)
            - Complete store listing
         
         4. STORE LISTING INFO:
@@ -347,13 +388,15 @@ jobs:
            - Privacy Policy URL: REQUIRED
            - Support Email: REQUIRED
         
-        5. REQUIRED ASSETS:
+        5. REQUIRED ASSETS FOR STORE LISTING:
            - App icon: 1240x1240px for store listing
            - Screenshots: Show your app in action
            - Store logo: 300x300px
         
         💡 PRO TIPS:
-        - Test on multiple Windows machines
+        - The package identity now matches Microsoft's requirements
+        - Icons are properly sized for all Microsoft Store requirements
+        - Test on multiple Windows machines before submission
         - Ensure app doesn't crash on startup
         - Check all vault features work properly
         - Prepare privacy policy website
@@ -365,8 +408,10 @@ jobs:
         
         Build Date: $(Get-Date)
         Build Branch: real-microsoft-store-submission
+        Package Identity: shyapsneon.CardSharkPro
+        Publisher: CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4
         
-        Good luck! 🍀
+        This should now pass Microsoft Store validation! 🍀
         "@
         
         $guide | Out-File -FilePath "SUBMISSION-GUIDE.txt" -Encoding UTF8
