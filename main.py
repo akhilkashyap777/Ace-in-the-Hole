@@ -14,23 +14,11 @@ import sys
 import os
 
 def debug_environment():
-    """Debug function to check environment and file availability"""
-    print("=" * 60)
-    print("🔍 DEBUG: Environment Check")
-    print("=" * 60)
-    
-    # Check Python path
-    print("📍 Python sys.path:")
+   
     for i, path in enumerate(sys.path):
         print(f"  [{i}] {path}")
     print()
     
-    # Check current working directory
-    print(f"📂 Current working directory: {os.getcwd()}")
-    print()
-    
-    # List all files in current directory
-    print("📄 Files in current directory:")
     try:
         files = os.listdir('.')
         python_files = [f for f in files if f.endswith('.py')]
@@ -231,7 +219,7 @@ class ScreenManager:
 
 class VaultApp(MDApp):
     # Constants as class attributes (more memory efficient)
-    TARGET_PATTERN = ('up', 'down', 'up', 'down', 'up')  # Tuple instead of list
+    TARGET_PATTERN = ('w', 's', 'w', 's', 'w')  # Tuple instead of list
     VAULT_CARDS = (  # Tuple for immutable data
         ("image-multiple", "Hidden Photos", "Secure photo storage", "show_photo_gallery"),
         ("video", "Hidden Videos", "Private video collection", "show_video_gallery"),
@@ -450,10 +438,10 @@ class VaultApp(MDApp):
             return False
         
         # Only respond to actual keyboard arrow keys
-        if key == 273:  # Up arrow
-            button = 'up'
-        elif key == 274:  # Down arrow
-            button = 'down'
+        if key == 119:  # W key
+            button = 'w'
+        elif key == 115:  # S key
+            button = 's'
         else:
             return False
         

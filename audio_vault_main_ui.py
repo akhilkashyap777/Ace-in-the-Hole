@@ -75,11 +75,6 @@ class AudioVaultWidget(MDBoxLayout):
             self.audio_grid.clear_widgets()
     
     def _cleanup_audio_widgets_safely(self):
-        """
-        Safely clean up audio widgets with explicit garbage collection
-        Only cleans up widgets that are truly unused
-        """
-        print("🧹 Starting safe audio widget cleanup...")
         
         # Clean up textures from current widgets before removing them
         for widget in self._active_audio_widgets:
@@ -102,18 +97,12 @@ class AudioVaultWidget(MDBoxLayout):
         for widget_id in dead_refs:
             del self._widget_cleanup_refs[widget_id]
         
-        print(f"🧹 Cleaned up {len(dead_refs)} unused widget references")
         
         # Force garbage collection ONLY after we've cleaned up references
         # This is safe because we've removed all our references first
         gc.collect()
-        print("🧹 Safe garbage collection completed")
     
     def _cleanup_widget_textures_safe(self, widget):
-        """
-        Safely clean up textures from a widget tree
-        Only touches textures that are no longer needed
-        """
         if not widget:
             return
             

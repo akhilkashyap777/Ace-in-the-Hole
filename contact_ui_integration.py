@@ -254,11 +254,6 @@ def create_enhanced_contact_widget(self, document):
 
 
 def integrate_contact_ui_enhancements(document_vault_ui_class):
-    """Main integration function - enhances DocumentVaultUI for contacts"""
-    
-    print("🔧 Integrating contact UI enhancements...")
-    
-    # Step 1: Patch the view method to handle contacts
     patch_document_vault_ui(document_vault_ui_class)
     
     # Step 2: Enhance the document widget creation for contacts
@@ -277,8 +272,6 @@ def integrate_contact_ui_enhancements(document_vault_ui_class):
     
     # Replace the method
     document_vault_ui_class.create_document_widget = create_document_widget
-    
-    print("✅ Contact UI enhancements integrated successfully")
 
 if __name__ == "__main__":
     print("📞 Contact UI Integration Module")

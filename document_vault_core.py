@@ -571,5 +571,3 @@ class DocumentVaultCore:
         thread = threading.Thread(target=pick_folder)
         thread.daemon = True
         thread.start()
-
-print(f"📁 Desktop Document Vault Core - Supports {len(DocumentVaultCore.FILE_CATEGORIES)} file categories")

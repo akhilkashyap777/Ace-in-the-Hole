@@ -277,8 +277,6 @@ So only proceed if you're on a trusted network.""",
             self.start_button.disabled = True
             self.stop_button.disabled = False
             
-            logger.info(f"Transfer server started successfully: {result}")
-            
             qr_code = self.transfer_server.generate_qr_code(result)
             if qr_code:
                 self.show_qr_dialog(result, qr_code)
@@ -293,7 +291,6 @@ So only proceed if you're on a trusted network.""",
         self.url_label.text = ""
         self.start_button.disabled = False
         self.stop_button.disabled = True
-        logger.info("Transfer server stopped by user")
     
     def show_qr_dialog(self, url, qr_code_base64):
         """Show QR code for easy mobile access"""
@@ -399,6 +396,4 @@ The numbers will be different for your network.""",
         if self.safety_dialog:
             self.safety_dialog.dismiss()
             self.safety_dialog = None
-        
-        logger.info("Returning to vault, server stopped")
         self.vault_app.show_vault_main()

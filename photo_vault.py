@@ -72,24 +72,10 @@ try:
 except ImportError:
     import platform
     PLATFORM = platform.system()
-
-print("🖼️ Universal Photo Vault module loaded successfully")
-print(f"🌐 Platform: {PLATFORM}")
-print("🔧 Ready for integration with main vault app")
-
-# For debugging and development
+    
 DEBUG_MODE = True
 
 if DEBUG_MODE:
-    print("🔧 DEBUG MODE ENABLED - Verbose logging active")
-    print("📸 Supported image detection:")
-    print("  🔍 MIME type detection for any image format")
-    print("  🖼️ PIL verification to ensure file is actually an image")
-    print("  📁 No dependency on file extensions")
-    print("  🚀 Future-proof: Supports any new image format automatically")
-    print("  📱 Cross-platform: Android file picker + Desktop tkinter")
-    print("  💾 Memory efficient: Batch loading for large collections")
-    print("  📤 Export: User-selected folder with conflict resolution")
     print("  ♻️ Safe deletion: Recycle bin integration")
 
 # Quick integration test function
@@ -99,14 +85,6 @@ def test_photo_vault_integration():
     Run this to check if all dependencies are available
     """
     try:
-        print("🧪 Testing Photo Vault Integration...")
-        
-        # Test core functionality
-        print("✅ PhotoVaultCore imported successfully")
-        print("✅ PhotoGalleryWidget imported successfully") 
-        print("✅ integrate_photo_vault function available")
-        
-        # Test image detection on some sample files
         class MockApp:
             pass
         
@@ -122,70 +100,11 @@ def test_photo_vault_integration():
             "document.pdf", "music.mp3", "video.mp4"  # Non-images
         ]
         
-        # Note: This is just testing the detection logic, not actual files
-        print("  📋 Ready to detect any image format using MIME + PIL verification")
-        print("  🚫 Will properly reject non-image files")
-        
-        print("✅ Photo Vault integration test completed successfully!")
-        print("🚀 Ready to integrate with your main vault app")
-        
         return True
         
     except Exception as e:
         print(f"❌ Photo Vault integration test failed: {e}")
         return False
 
-# Integration instructions for developers
-INTEGRATION_INSTRUCTIONS = """
-🔧 INTEGRATION INSTRUCTIONS:
-
-1. Add to main.py (after secure storage setup):
-   ```python
-   from photo_vault import integrate_photo_vault
-   integrate_photo_vault(self)
-   ```
-
-2. Add button to vault main screen in main.py:
-   ```python
-   # In your open_vault() method, add this button:
-   photo_btn = Button(
-       text='🖼️ Photos (Click to manage)',
-       font_size=20,
-       size_hint_y=None,
-       height=60
-   )
-   photo_btn.bind(on_press=lambda x: self.show_photo_gallery())
-   content_layout.add_widget(photo_btn)
-   ```
-
-3. The photo vault will automatically:
-   - Use your secure storage system
-   - Integrate with your recycle bin
-   - Follow your app's navigation patterns
-   - Support all platforms (Android, Windows, macOS, Linux)
-
-4. Image formats supported:
-   🖼️ Universal Detection: ANY image format using MIME + PIL verification
-   📸 Common: JPG, PNG, GIF, BMP, WebP, TIFF, SVG
-   📱 Modern: HEIC, AVIF, WebP
-   📷 RAW: CR2, NEF, ARW, DNG (if PIL supports)
-   🔮 Future: Any new image format automatically supported
-
-5. Features:
-   - Universal image format detection (no extension dependency)
-   - Cross-platform file picker with folder selection
-   - Export to user-chosen destination with conflict resolution
-   - Memory-efficient grid gallery with batch loading
-   - Safe deletion via recycle bin integration
-   - Full-screen image viewing with export option
-   - Photo selection system for bulk operations
-
-6. Memory Management:
-   - Batch loading prevents memory issues with large collections
-   - Automatic texture cleanup to prevent memory leaks
-   - Efficient thumbnail generation using PIL
-"""
-
 if __name__ == "__main__":
-    print(INTEGRATION_INSTRUCTIONS)
     test_photo_vault_integration()

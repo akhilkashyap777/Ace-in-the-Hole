@@ -44,33 +44,13 @@ def integrate_file_transfer(vault_app):
         
         # Update current screen tracking (following main.py pattern)
         vault_app.current_screen = 'file_transfer'
-        
-        logger.info("File transfer interface loaded")
     
     # Add the method to the vault app instance
     # This is how all other vault modules integrate with main.py
     vault_app.show_file_transfer = show_file_transfer
-    
-    logger.info("File transfer module integrated with vault application")
 
-
-# Export the main integration function for compatibility
 __all__ = ['integrate_file_transfer']
 
 
 if __name__ == "__main__":
-    # Module information when run directly
-    logger.info("🚀 File Transfer Integration Module")
-    logger.info("📁 Module structure:")
-    logger.info("  ├── file_transfer_server.py    (Backend HTTP server)")
-    logger.info("  ├── file_transfer_ui.py        (Frontend UI components)")
-    logger.info("  ├── file_transfer_ui.html      (Web interface)")
-    logger.info("  └── file_transfer_vault.py     (Integration module)")
-    logger.info("")
-    logger.info("✨ Features:")
-    logger.info("  • 5GB file size limit (increased from 500MB)")
-    logger.info("  • Streaming uploads for large files")
-    logger.info("  • Beautiful modern web interface")
-    logger.info("  • Security warnings and user guidance")
-    logger.info("  • QR code generation for easy mobile access")
     logger.info("  • Non-technical user friendly interface")

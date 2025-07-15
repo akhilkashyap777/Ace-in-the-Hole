@@ -128,8 +128,7 @@ def handle_selection_async(file_paths, audio_vault_core, refresh_callback):
     """Handle selected audio files asynchronously"""
     if not file_paths:
         return
-    
-    print(f"✅ Selected files: {file_paths}")
+
     # Handle both single file and multiple files
     if isinstance(file_paths, str):
         file_paths = [file_paths]

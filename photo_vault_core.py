@@ -280,7 +280,6 @@ class PhotoVaultCore:
         """Move photo to recycle bin instead of permanent deletion"""
         try:
             if hasattr(self.app, 'recycle_bin'):
-                print(f"Moving photo to recycle bin: {photo_path}")
                 result = self.app.recycle_bin.move_to_recycle(
                     file_path=photo_path,
                     original_location=os.path.dirname(photo_path),
@@ -291,10 +290,8 @@ class PhotoVaultCore:
                 )
                 
                 if result['success']:
-                    print(f"✅ Photo moved to recycle bin successfully")
                     return True
                 else:
-                    print(f"❌ Failed to move photo to recycle bin: {result.get('error', 'Unknown error')}")
                     return False
             else:
                 # Fallback to permanent deletion if recycle bin not available

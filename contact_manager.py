@@ -15,8 +15,6 @@ class ContactManager:
     
     def __init__(self, vault_app):
         self.app = vault_app
-        # No permissions needed on desktop
-        print("📞 Desktop mode - no permissions required")
     
     def parse_vcf_contact(self, file_path):
 
@@ -111,7 +109,6 @@ class ContactManager:
             return contact
             
         except Exception as e:
-            print(f"Error parsing VCF: {e}")
             return {'error': str(e)}
     
     def parse_phone_line(self, line):
@@ -224,7 +221,6 @@ class ContactManager:
             webbrowser.open(f"tel:{phone_number}")
             self.show_toast(f"Opening phone app for: {phone_number}")
         except Exception as e:
-            print(f"Could not open phone app: {e}")
             self.show_desktop_call_message(phone_number)
     
     def show_desktop_call_message(self, phone_number):
@@ -507,7 +503,6 @@ class ContactManager:
             
             self.show_toast(f"Copied: {text}")
         except Exception as e:
-            print(f"Clipboard error: {e}")
             self.show_error_popup(f"Could not copy to clipboard: {e}")
     
     def send_email(self, email_address):
@@ -516,7 +511,6 @@ class ContactManager:
             webbrowser.open(f"mailto:{email_address}")
             self.show_toast(f"Opening email for: {email_address}")
         except Exception as e:
-            print(f"Email error: {e}")
             self.show_error_popup(f"Could not open email app: {e}")
     
     def open_maps(self, address):
@@ -525,7 +519,6 @@ class ContactManager:
             webbrowser.open(f"https://maps.google.com/maps?q={address}")
             self.show_toast(f"Opening maps for: {address}")
         except Exception as e:
-            print(f"Maps error: {e}")
             self.show_error_popup(f"Could not open maps: {e}")
     
     def export_contact(self, file_path, contact_name):
@@ -567,7 +560,5 @@ class ContactManager:
 def integrate_contact_management(vault_app):
 
     vault_app.contact_manager = ContactManager(vault_app)
-    
-    print("🖥️ Desktop mode - External app integration enabled")
     
     return vault_app.contact_manager

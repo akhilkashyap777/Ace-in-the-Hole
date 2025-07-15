@@ -1,7 +1,7 @@
 """
 File Transfer Server Module
 Backend HTTP server that handles file uploads/downloads with 5GB support
-FIXED: Real-time file deletion detection and cache invalidation
+FIXED: Document vault subdirectory scanning + Clean minimal logging
 """
 
 import os
@@ -17,25 +17,16 @@ import tempfile
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 
-# Configure logging for file transfer operations
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [VAULT_TRANSFER] %(levelname)s: %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('vault_transfer.log')
-    ]
-)
+# Minimal logging configuration
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger('VaultTransfer')
 
 # Optional Cython optimization for large file transfers
 try:
-    from cython_file_transfer import chunk_file_fast, calculate_transfer_metrics
+    from cython_file_transfer import chunk_file_fast
     CYTHON_AVAILABLE = True
-    logger.info("High-performance file transfer mode enabled")
 except ImportError:
     CYTHON_AVAILABLE = False
-    logger.info("Standard file transfer mode active")
 
 
 class SecureFileTransferHandler(BaseHTTPRequestHandler):
@@ -76,7 +67,6 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
             self.wfile.write(html_content.encode('utf-8'))
             
         except FileNotFoundError:
-            logger.error("Web interface file missing - please ensure file_transfer_ui.html exists")
             self._send_fallback_page()
         except Exception as e:
             logger.error(f"Failed to load web interface: {e}")
@@ -113,7 +103,7 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
         """Send list of available vault files"""
         try:
             transfer_server = self.server.transfer_server
-            files = transfer_server.get_realtime_file_list()  # 🔥 FIXED: Use real-time instead of cached
+            files = transfer_server.get_realtime_file_list()
             
             self.send_response(200)
             self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -132,21 +122,17 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
             full_path = transfer_server.resolve_file_path(file_path)
             
             if not full_path or not os.path.exists(full_path):
-                logger.warning(f"Download attempt for non-existent file: {file_path}")
                 self.send_404()
                 return
             
             file_size = os.path.getsize(full_path)
             filename = os.path.basename(full_path)
             
-            logger.info(f"Serving download: {filename} ({self._format_bytes(file_size)})")
-            
             self.send_response(200)
             self.send_header('Content-Type', 'application/octet-stream')
             self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
             self.send_header('Content-Length', str(file_size))
             self.send_header('Cache-Control', 'no-cache')
-            # Extended timeout for large files
             self.send_header('Keep-Alive', 'timeout=3600')
             self.end_headers()
             
@@ -163,7 +149,6 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
     def _stream_file_chunks(self, file_path):
         """Stream file in optimized chunks"""
         try:
-            # Use larger chunks for better performance with big files
             chunk_size = 1024 * 1024  # 1MB chunks for large files
             
             with open(file_path, 'rb') as file:
@@ -183,16 +168,12 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             content_type = self.headers.get('Content-Type', '')
             
-            # Validate upload
             if content_length == 0:
                 raise ValueError("No file data received")
             
-            # 🚀 INCREASED TO 5GB LIMIT
             max_size = 5 * 1024 * 1024 * 1024  # 5GB limit
             if content_length > max_size:
                 raise ValueError(f"File too large ({self._format_bytes(content_length)}). Maximum: 5GB")
-            
-            logger.info(f"Receiving file upload: {self._format_bytes(content_length)}")
             
             # For large files, use streaming approach instead of loading all into memory
             if content_length > 100 * 1024 * 1024:  # 100MB threshold
@@ -223,18 +204,15 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
         if 'multipart/form-data' not in content_type:
             raise ValueError("Invalid upload format")
         
-        # Extract boundary
         boundary = self._extract_boundary(content_type)
         if not boundary:
             raise ValueError("Upload boundary not found")
         
-        # Stream and parse multipart data
         filename, temp_file_path = self._stream_parse_multipart(content_length, boundary)
         
         if not filename or not temp_file_path:
             raise ValueError("No valid file found in upload")
         
-        # Move temp file to vault
         with open(temp_file_path, 'rb') as temp_file:
             file_data = temp_file.read()
         
@@ -247,14 +225,11 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
         filename = None
         temp_file_path = None
         
-        # Create temporary file for streaming
         temp_fd, temp_file_path = tempfile.mkstemp()
         
         try:
             bytes_read = 0
             in_file_data = False
-            
-            # Read in chunks and parse
             buffer = b''
             chunk_size = 64 * 1024  # 64KB chunks
             
@@ -268,11 +243,9 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
                     bytes_read += len(chunk)
                     buffer += chunk
                     
-                    # Simple parsing - look for filename in headers
                     if not filename and b'filename=' in buffer:
                         filename = self._extract_filename_from_buffer(buffer)
                     
-                    # Start writing file data after headers
                     if not in_file_data and b'\r\n\r\n' in buffer:
                         header_end = buffer.find(b'\r\n\r\n') + 4
                         file_start = buffer[header_end:]
@@ -281,7 +254,6 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
                         if file_start:
                             temp_file.write(file_start)
                     elif in_file_data:
-                        # Write chunk to temp file
                         temp_file.write(buffer)
                         buffer = b''
             
@@ -359,9 +331,7 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
         saved_path = transfer_server.save_to_vault(filename, file_data)
         
         if saved_path:
-            # 🔥 FIXED: Force immediate file system update
             transfer_server.invalidate_cache()
-            logger.info(f"Upload successful: {filename} ({self._format_bytes(len(file_data))})")
             
             self._send_success_response({
                 'status': 'success',
@@ -410,11 +380,11 @@ class SecureFileTransferHandler(BaseHTTPRequestHandler):
         self.send_error(404, "Resource not found")
     
     def log_message(self, format, *args):
-        pass
+        pass  # Suppress HTTP request logging
 
 
 class VaultFileTransferServer:
-    """Secure file transfer server for vault contents with 5GB support and real-time file detection"""
+    """Secure file transfer server for vault contents with 5GB support and document subdirectory scanning"""
     
     def __init__(self, vault_app):
         self.vault_app = vault_app
@@ -425,13 +395,13 @@ class VaultFileTransferServer:
         self.server_ip = None
         self.server_port = None
         
-        # 🔥 FIXED: Enhanced file tracking system
+        # File tracking system
         self._cached_files = None
-        self._file_timestamps = {}  # Track individual file modification times
-        self._directory_timestamps = {}  # Track directory modification times
+        self._file_timestamps = {}
+        self._directory_timestamps = {}
         self._cache_lock = threading.Lock()
         
-        # 🔥 NEW: Real-time monitoring thread
+        # Real-time monitoring thread
         self._monitor_thread = None
         self._should_monitor = False
     
@@ -443,7 +413,6 @@ class VaultFileTransferServer:
                 local_ip = sock.getsockname()[0]
             return local_ip
         except Exception as e:
-            logger.warning(f"IP detection failed, using localhost: {e}")
             return "127.0.0.1"
     
     def find_available_port(self):
@@ -461,12 +430,10 @@ class VaultFileTransferServer:
             self.server_ip = self.detect_local_ip()
             self.server_port = self.find_available_port()
             
-            # Create HTTP server with extended timeout for large files
             self.http_server = HTTPServer((self.server_ip, self.server_port), SecureFileTransferHandler)
             self.http_server.timeout = 3600  # 1 hour timeout for large transfers
             self.http_server.transfer_server = self
             
-            # Start in background thread
             self.server_thread = threading.Thread(
                 target=self.http_server.serve_forever,
                 daemon=True,
@@ -474,13 +441,10 @@ class VaultFileTransferServer:
             )
             self.server_thread.start()
             
-            # 🔥 NEW: Start file monitoring
             self._start_file_monitoring()
             
             self.is_running = True
             server_url = f"http://{self.server_ip}:{self.server_port}"
-            
-            logger.info(f"Vault transfer server started: {server_url} (5GB max file size)")
             return True, server_url
             
         except Exception as e:
@@ -493,7 +457,6 @@ class VaultFileTransferServer:
             return
         
         try:
-            # 🔥 NEW: Stop file monitoring first
             self._stop_file_monitoring()
             
             if self.http_server:
@@ -506,13 +469,12 @@ class VaultFileTransferServer:
                 self._directory_timestamps.clear()
             
             self.is_running = False
-            logger.info("Vault transfer server stopped")
             
         except Exception as e:
             logger.error(f"Server shutdown error: {e}")
     
     def _start_file_monitoring(self):
-        """🔥 NEW: Start background file monitoring thread"""
+        """Start background file monitoring thread"""
         self._should_monitor = True
         self._monitor_thread = threading.Thread(
             target=self._monitor_file_changes,
@@ -520,55 +482,54 @@ class VaultFileTransferServer:
             name="VaultFileMonitor"
         )
         self._monitor_thread.start()
-        logger.info("Real-time file monitoring started")
     
     def _stop_file_monitoring(self):
-        """🔥 NEW: Stop background file monitoring"""
+        """Stop background file monitoring"""
         self._should_monitor = False
         if self._monitor_thread and self._monitor_thread.is_alive():
             self._monitor_thread.join(timeout=2.0)
-        logger.info("File monitoring stopped")
     
     def _monitor_file_changes(self):
-        """🔥 NEW: Background thread to monitor file system changes"""
+        """Background thread to monitor file system changes"""
         while self._should_monitor and self.is_running:
             try:
                 if self._has_files_changed():
-                    logger.info("File changes detected, invalidating cache")
                     self.invalidate_cache()
                 
-                # Check every 2 seconds (much faster than old 30-second cache)
-                time.sleep(2.0)
+                time.sleep(2.0)  # Check every 2 seconds
                 
             except Exception as e:
                 logger.error(f"File monitoring error: {e}")
-                time.sleep(5.0)  # Wait longer on error
+                time.sleep(5.0)
     
     def _has_files_changed(self):
-        """🔥 NEW: Check if any files or directories have changed"""
+        """Check if any files or directories have changed"""
         try:
-            vault_categories = {
-                'photos': self.secure_storage.get_vault_directory('photos'),
-                'videos': self.secure_storage.get_vault_directory('videos'),
-                'audio': self.secure_storage.get_vault_directory('audio'),
-                'documents': self.secure_storage.get_vault_directory('documents')
-            }
+            vault_categories = {}
+            categories_to_check = ['photos', 'videos', 'audio', 'documents']
             
-            # Check directory modification times first (faster)
+            for category in categories_to_check:
+                try:
+                    directory = self.secure_storage.get_vault_directory(category)
+                    if directory and os.path.exists(directory):
+                        vault_categories[category] = directory
+                except Exception:
+                    continue
+            
+            # Check directory modification times
             for category, directory in vault_categories.items():
-                if directory and os.path.exists(directory):
-                    try:
-                        current_mtime = os.path.getmtime(directory)
-                        if category not in self._directory_timestamps:
-                            self._directory_timestamps[category] = current_mtime
-                            continue
-                        
-                        if current_mtime != self._directory_timestamps[category]:
-                            self._directory_timestamps[category] = current_mtime
-                            return True
-                            
-                    except OSError:
+                try:
+                    current_mtime = os.path.getmtime(directory)
+                    if category not in self._directory_timestamps:
+                        self._directory_timestamps[category] = current_mtime
                         continue
+                    
+                    if current_mtime != self._directory_timestamps[category]:
+                        self._directory_timestamps[category] = current_mtime
+                        return True
+                        
+                except OSError:
+                    continue
             
             return False
             
@@ -577,95 +538,259 @@ class VaultFileTransferServer:
             return True  # Assume changed on error for safety
     
     def invalidate_cache(self):
-        """🔥 NEW: Force immediate cache invalidation"""
+        """Force immediate cache invalidation"""
         with self._cache_lock:
             self._cached_files = None
             self._file_timestamps.clear()
-            logger.debug("File cache invalidated")
     
     def get_realtime_file_list(self):
-        """🔥 NEW: Get real-time file list (replaces cached version)"""
-        # Always scan fresh to ensure accuracy
+        """Get real-time file list"""
         return self._scan_vault_files()
     
     def get_cached_file_list(self):
-        """🔥 DEPRECATED: Keep for backward compatibility but use real-time"""
+        """Keep for backward compatibility"""
         return self.get_realtime_file_list()
     
     def refresh_file_cache(self):
-        """🔥 UPDATED: Force refresh (now just invalidates since we use real-time)"""
+        """Force refresh"""
         self.invalidate_cache()
     
     def _scan_vault_files(self):
-        """Scan all vault categories for files"""
+        """🔥 FIXED: Scan all vault categories including document subdirectories"""
         files = []
         
-        vault_categories = {
-            'photos': self.secure_storage.get_vault_directory('photos'),
-            'videos': self.secure_storage.get_vault_directory('videos'),
-            'audio': self.secure_storage.get_vault_directory('audio'),
-            'documents': self.secure_storage.get_vault_directory('documents')
-        }
+        # Get actual directory paths from secure storage
+        vault_categories = {}
+        categories_to_scan = ['photos', 'videos', 'audio', 'documents']
+        
+        for category in categories_to_scan:
+            try:
+                directory = self.secure_storage.get_vault_directory(category)
+                if directory and os.path.exists(directory):
+                    vault_categories[category] = directory
+            except Exception as e:
+                logger.error(f"Error getting directory for {category}: {e}")
+                continue
         
         for category, directory in vault_categories.items():
-            if directory and os.path.exists(directory):
-                try:
-                    with os.scandir(directory) as entries:
-                        for entry in entries:
-                            if entry.is_file():
-                                try:
-                                    stat_info = entry.stat()
-                                    files.append({
-                                        'name': entry.name,
-                                        'category': category,
-                                        'size': stat_info.st_size,
-                                        'path': f"{category}/{entry.name}",
-                                        'modified': stat_info.st_mtime
-                                    })
-                                except (OSError, IOError):
-                                    continue
-                except (OSError, IOError):
-                    continue
+            try:
+                if category == 'documents':
+                    # 🔥 SPECIAL: Scan documents with subdirectories
+                    files_found = self._scan_documents_with_subdirectories(directory, category)
+                    files.extend(files_found)
+                else:
+                    # Regular scanning for photos, videos, audio
+                    files_found = self._scan_directory_files(directory, category)
+                    files.extend(files_found)
+                    
+            except Exception as e:
+                logger.error(f"Error scanning {category}: {e}")
+                continue
         
+        # Sort by modification time (newest first)
         files.sort(key=lambda x: x.get('modified', 0), reverse=True)
         return files
     
-    def resolve_file_path(self, relative_path):
-        """Safely resolve relative path to absolute vault path"""
+    def _scan_documents_with_subdirectories(self, documents_dir, category):
+        """🔥 COMPLETE: Dynamically scan documents directory and all subdirectories"""
+        files = []
+        
         try:
-            path_parts = relative_path.split('/', 1)
-            if len(path_parts) != 2:
+            if os.path.exists(documents_dir):
+                file_list = os.listdir(documents_dir)
+                
+                for filename in file_list:
+                    file_path = os.path.join(documents_dir, filename)
+                    
+                    if os.path.isdir(file_path):
+                        # 🔥 DYNAMIC: Found a subdirectory, scan it!
+                        subdir_name = filename
+                        subdir_files = self._scan_single_subdirectory(file_path, category, subdir_name)
+                        files.extend(subdir_files)
+                        
+                        if subdir_files:
+                            logger.info(f"📂 SUBDIR {subdir_name}: Found {len(subdir_files)} files")
+                            
+                    elif os.path.isfile(file_path):
+                        # Regular file in main directory
+                        file_info = self._process_file(file_path, filename, category)
+                        if file_info:
+                            files.append(file_info)
+        
+        except Exception as e:
+            logger.error(f"Error scanning documents directory: {e}")
+        
+        return files
+
+    def _scan_single_subdirectory(self, subdir_path, category, subdir_name):
+        """Scan files inside a single subdirectory"""
+        files = []
+        
+        try:
+            file_list = os.listdir(subdir_path)
+            
+            for filename in file_list:
+                file_path = os.path.join(subdir_path, filename)
+                
+                # Only process files (skip nested subdirectories for now)
+                if os.path.isfile(file_path):
+                    file_info = self._process_file(file_path, filename, category, subdir_name)
+                    if file_info:
+                        files.append(file_info)
+                        
+        except Exception as e:
+            logger.error(f"Error scanning subdirectory {subdir_name}: {e}")
+        
+        return files
+    
+    def _scan_directory_files(self, directory, category):
+        """Scan a single directory for files (for photos, videos, audio)"""
+        files = []
+        
+        try:
+            file_list = os.listdir(directory)
+            
+            for filename in file_list:
+                file_path = os.path.join(directory, filename)
+                
+                # Skip if not a file
+                if not os.path.isfile(file_path):
+                    continue
+                
+                # Process file
+                file_info = self._process_file(file_path, filename, category)
+                if file_info:
+                    files.append(file_info)
+                    
+        except Exception as e:
+            logger.error(f"Error scanning {category} directory: {e}")
+        
+        return files
+    
+    def _process_file(self, file_path, filename, category, subcategory=None):
+        """Process a single file and return file info"""
+        try:
+            # Get file stats with error handling
+            stat_info = os.stat(file_path)
+            
+            # Create relative path for download
+            if subcategory:
+                relative_path = f"{category}/{subcategory}/{filename}"
+            else:
+                relative_path = f"{category}/{filename}"
+            
+            file_info = {
+                'name': filename,
+                'category': category,
+                'subcategory': subcategory,
+                'size': stat_info.st_size,
+                'path': relative_path,
+                'modified': stat_info.st_mtime
+            }
+            
+            return file_info
+            
+        except (OSError, IOError, PermissionError) as e:
+            # Handle locked files (like Excel files that might be open)
+            logger.warning(f"Could not read stats for {filename}: {e}")
+            
+            # Still try to add the file with basic info
+            try:
+                with open(file_path, 'rb') as f:
+                    f.seek(0, 2)
+                    file_size = f.tell()
+            except:
+                file_size = 0
+            
+            if subcategory:
+                relative_path = f"{category}/{subcategory}/{filename}"
+            else:
+                relative_path = f"{category}/{filename}"
+            
+            file_info = {
+                'name': filename,
+                'category': category,
+                'subcategory': subcategory,
+                'size': file_size,
+                'path': relative_path,
+                'modified': 0
+            }
+            
+            return file_info
+            
+        except Exception as e:
+            logger.error(f"Unexpected error reading {filename}: {e}")
+            return None
+    
+    def resolve_file_path(self, relative_path):
+        """🔥 FIXED: Safely resolve relative path including subdirectories"""
+        try:
+            path_parts = relative_path.split('/')
+            
+            if len(path_parts) < 2:
+                logger.warning(f"Invalid path format: {relative_path}")
                 return None
             
-            category, filename = path_parts
-            vault_directory = self.secure_storage.get_vault_directory(category)
+            category = path_parts[0]
             
-            if not vault_directory:
+            # Handle both flat and nested paths
+            if len(path_parts) == 2:
+                # Flat: category/filename
+                filename = path_parts[1]
+                vault_directory = self.secure_storage.get_vault_directory(category)
+                if not vault_directory:
+                    return None
+                full_path = os.path.join(vault_directory, filename)
+                
+            elif len(path_parts) == 3:
+                # Nested: category/subcategory/filename  
+                subcategory = path_parts[1]
+                filename = path_parts[2]
+                vault_directory = self.secure_storage.get_vault_directory(category)
+                if not vault_directory:
+                    return None
+                full_path = os.path.join(vault_directory, subcategory, filename)
+                
+            else:
+                logger.warning(f"Path too deep: {relative_path}")
                 return None
             
+            # Sanitize filename to prevent directory traversal
             safe_filename = os.path.basename(filename)
-            full_path = os.path.join(vault_directory, safe_filename)
+            if safe_filename != filename:
+                return None
             
+            # Security check: ensure path is within vault directory
+            vault_directory = self.secure_storage.get_vault_directory(category)
             if not full_path.startswith(vault_directory):
-                logger.warning(f"Path traversal attempt blocked: {relative_path}")
+                return None
+            
+            # Check if file exists before returning
+            if not os.path.exists(full_path):
+                return None
+            
+            # Additional check: ensure it's actually a file
+            if not os.path.isfile(full_path):
                 return None
             
             return full_path
             
         except Exception as e:
-            logger.error(f"Path resolution failed for {relative_path}: {e}")
             return None
     
     def save_to_vault(self, filename, file_data):
         """Save uploaded file to appropriate vault category"""
         try:
             category = self._categorize_file(filename)
+            
+            # Use secure storage to get the real directory path
             vault_directory = self.secure_storage.get_vault_directory(category)
             
             if not vault_directory:
                 logger.error(f"Vault directory unavailable for category: {category}")
                 return None
             
+            # Ensure directory exists
             os.makedirs(vault_directory, exist_ok=True)
             
             safe_filename = self._ensure_safe_filename(filename)
@@ -694,19 +819,50 @@ class VaultFileTransferServer:
             return None
     
     def _categorize_file(self, filename):
-        """Determine vault category based on file extension"""
-        extension = os.path.splitext(filename)[1].lower()
+        """Determine vault category based on file extension - COMPREHENSIVE LIST"""
+        extension = os.path.splitext(filename)[1].lower()  # Convert to lowercase for case-insensitive matching
         
         categories = {
-            'photos': ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg', '.heic', '.raw'],
-            'videos': ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.3gp'],
-            'audio': ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma', '.opus']
+            'photos': [
+                # Common formats
+                '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.svg', '.ico',
+                # Modern formats  
+                '.webp', '.avif', '.heic', '.heif',
+                # Raw camera formats
+                '.raw', '.cr2', '.cr3', '.nef', '.arw', '.dng', '.orf', '.rw2', '.pef', '.srw',
+                # Other image formats
+                '.jfif', '.jpe', '.jpx', '.j2k', '.jpf', '.jpm', '.jpg2', '.j2c', '.jpc', '.jpx'
+            ],
+            
+            'videos': [
+                # Common formats
+                '.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm', '.m4v', '.3gp', '.3g2',
+                # Professional formats
+                '.mts', '.m2ts', '.ts', '.vob', '.mpg', '.mpeg', '.m2v', '.m4p', '.m4v',
+                # Streaming formats
+                '.f4v', '.f4p', '.f4a', '.f4b', '.ogv', '.ogg', '.drc', '.mng', '.qt',
+                # Other formats
+                '.rmvb', '.rm', '.asf', '.amv', '.mp2', '.mpe', '.mpv', '.m2v', '.svi', '.3g2', '.mxf'
+            ],
+            
+            'audio': [
+                # Common formats
+                '.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma', '.opus',
+                # Lossless formats
+                '.ape', '.alac', '.dsd', '.dsf', '.dff',
+                # Other formats
+                '.aiff', '.aif', '.au', '.ra', '.rm', '.3ga', '.amr', '.awb', '.dct', '.dss',
+                '.dvf', '.gsm', '.iklax', '.ivs', '.m4p', '.mmf', '.mpc', '.msv', '.nmf',
+                '.oga', '.mogg', '.raw', '.sln', '.tta', '.voc', '.vox', '.wv', '.webm'
+            ]
         }
         
+        # Check against all categories
         for category, extensions in categories.items():
             if extension in extensions:
                 return category
         
+        # Everything else goes to documents (including .xlsx, .docx, .pdf, etc.)
         return 'documents'
     
     def _ensure_safe_filename(self, filename):

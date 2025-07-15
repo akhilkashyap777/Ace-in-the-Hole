@@ -24,7 +24,6 @@ def setup_contact_system(vault_app):
         try:
             from document_vault_ui import DocumentVaultUI
             integrate_contact_ui_enhancements(DocumentVaultUI)
-            print("✅ Contact UI enhancements integrated")
         except ImportError as e:
             print(f"⚠️ UI enhancement skipped: {e}")
         
@@ -57,7 +56,6 @@ def activate_contact_category(document_vault):
         contact_dir = os.path.join(document_vault.vault_dir, 'contacts')
         if not os.path.exists(contact_dir):
             os.makedirs(contact_dir)
-            print(f"📁 Created contact directory: {contact_dir}")
     else:
         print("⚠️ Contact category not found in FILE_CATEGORIES")
 
@@ -124,8 +122,6 @@ def add_contact_methods(vault_app):
     vault_app.parse_contact_file = parse_contact_file
     vault_app.make_call_to_contact = make_call_to_contact
     vault_app.get_contact_stats = get_contact_stats
-    
-    print("📞 Contact convenience methods added")
 
 def verify_contact_integration(vault_app):
     """
@@ -168,10 +164,6 @@ def verify_contact_integration(vault_app):
     return status
 
 def print_contact_integration_status(vault_app):
-    """Print detailed status of contact integration"""
-    
-    print("\n📊 CONTACT INTEGRATION STATUS:")
-    print("=" * 40)
     
     status = verify_contact_integration(vault_app)
     
@@ -190,67 +182,6 @@ def print_contact_integration_status(vault_app):
         if os.path.exists(contact_dir):
             contact_count = len([f for f in os.listdir(contact_dir) if f.endswith(('.vcf', '.contact'))])
             print(f"👤 Contacts in Vault: {contact_count}")
-    
-    print("=" * 40)
-
-# Test function for developers
-def test_contact_functionality(vault_app):
-    """
-    Test basic contact functionality
-    For development and debugging
-    """
-    
-    print("\n🧪 TESTING CONTACT FUNCTIONALITY:")
-    print("-" * 30)
-    
-    try:
-        # Test 1: Contact manager exists
-        if hasattr(vault_app, 'contact_manager'):
-            print("✅ Contact manager: Available")
-        else:
-            print("❌ Contact manager: Missing")
-            return False
-        
-        # Test 2: Parse a sample VCF content
-        sample_vcf = """BEGIN:VCARD
-VERSION:3.0
-FN:John Doe
-N:Doe;John;;;
-TEL;TYPE=CELL:+1234567890
-EMAIL;TYPE=HOME:john@example.com
-ORG:Test Company
-END:VCARD"""
-        
-        # Create temporary test file
-        import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.vcf', delete=False) as f:
-            f.write(sample_vcf)
-            temp_file = f.name
-        
-        try:
-            contact_data = vault_app.contact_manager.parse_vcf_contact(temp_file)
-            if 'error' not in contact_data:
-                print("✅ VCF parsing: Working")
-                print(f"   Parsed contact: {contact_data['name']}")
-                print(f"   Phone: {contact_data['phones'][0]['number'] if contact_data['phones'] else 'None'}")
-            else:
-                print(f"❌ VCF parsing: Failed - {contact_data['error']}")
-        finally:
-            os.unlink(temp_file)
-        
-        # Test 3: Contact stats
-        stats = vault_app.get_contact_stats()
-        print(f"✅ Contact stats: {stats['total_contacts']} contacts found")
-        
-        # Test 4: Desktop integration (always available)
-        print("✅ Desktop integration: Available (External apps)")
-        
-        print("✅ Contact functionality test completed")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Contact functionality test failed: {e}")
-        return False
 
 # Example usage and documentation
 USAGE_EXAMPLE = '''

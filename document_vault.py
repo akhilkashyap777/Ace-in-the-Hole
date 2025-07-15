@@ -52,10 +52,6 @@ except ImportError:
     import platform
     PLATFORM = platform.system()
 
-print("📁 Universal Document Vault module loaded successfully")
-print(f"🌐 Platform: {PLATFORM}")
-print("🔧 Ready for integration with main vault app")
-
 # For debugging and development
 DEBUG_MODE = True
 

@@ -11,18 +11,14 @@ from kivy.metrics import dp
 try:
     import pygame
     PYGAME_AVAILABLE = True
-    print("🎵 Pygame audio support available")
 except ImportError:
     PYGAME_AVAILABLE = False
-    print("⚠️ Pygame not available - basic audio player only")
 
 try:
     from kivy.core.audio import SoundLoader
     KIVY_AUDIO_AVAILABLE = True
-    print("🎵 Kivy audio support available")
 except ImportError:
     KIVY_AUDIO_AVAILABLE = False
-    print("⚠️ Kivy audio not available")
 
 class AudioPlayerWidget(BoxLayout):
     """
@@ -228,7 +224,6 @@ class AudioPlayerWidget(BoxLayout):
             
         except Exception as e:
             self.status_label.text = f"❌ Playback error: {str(e)}"
-            print(f"Audio playback error: {e}")
     
     def play_with_pygame(self):
         """Play audio using Pygame"""
@@ -418,12 +413,9 @@ class AudioPlayerWidget(BoxLayout):
             return True  # Continue the timer
             
         except Exception as e:
-            print(f"Position update error: {e}")
             return False
     
     def close_player(self, instance):
-        """Close the audio player"""
-        # Stop any playing audio
         self.stop_audio(None)
         
         # Clean up resources

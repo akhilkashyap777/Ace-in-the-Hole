@@ -416,16 +416,30 @@
         }
         
         function loadFiles() {
+            console.log('🔍 Starting to load files...');
+            
             fetch('/api/files')
                 .then(response => {
+                    console.log('📡 Response received:', response.status, response.statusText);
+                    
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     return response.json();
                 })
                 .then(files => {
+                    console.log('📋 Files data received:', files);
+                    console.log('📊 Number of files:', files.length);
+                    
+                    // Debug: Log each file
+                    files.forEach((file, index) => {
+                        console.log(`  ${index + 1}. ${file.name} (${file.category}) - ${formatBytes(file.size)}`);
+                    });
+                    
                     const list = document.getElementById('fileList');
+                    
                     if (files.length === 0) {
+                        console.log('📂 No files found, showing empty state');
                         list.innerHTML = `
                             <div class="empty-state">
                                 <svg viewBox="0 0 24 24" fill="currentColor">
@@ -436,10 +450,14 @@
                             </div>
                         `;
                     } else {
-                        list.innerHTML = files.map(file => 
-                            `<div class="file-item">
+                        console.log('📁 Generating file list HTML...');
+                        
+                        const fileListHTML = files.map((file, index) => {
+                            console.log(`  Generating HTML for file ${index + 1}: ${file.name}`);
+                            
+                            return `<div class="file-item">
                                 <div class="file-info">
-                                    <div class="file-name">${file.name}</div>
+                                    <div class="file-name">${escapeHtml(file.name)}</div>
                                     <div class="file-size">${formatBytes(file.size)} • ${getCategoryIcon(file.category)} ${file.category}</div>
                                 </div>
                                 <a href="/download/${file.path}" download class="download-btn">
@@ -448,21 +466,39 @@
                                     </svg>
                                     Download
                                 </a>
-                            </div>`
-                        ).join('');
+                            </div>`;
+                        }).join('');
+                        
+                        console.log('📝 Setting file list HTML...');
+                        list.innerHTML = fileListHTML;
+                        console.log('✅ File list updated successfully');
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading files:', error);
+                    console.error('❌ Error loading files:', error);
+                    console.error('❌ Error details:', error.message);
+                    console.error('❌ Error stack:', error.stack);
+                    
                     document.getElementById('fileList').innerHTML = 
                         `<div class="empty-state">
                             <svg viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
                             </svg>
                             <p style="color: #f87171;">Error loading files</p>
-                            <small>${error.message}</small>
+                            <small>${escapeHtml(error.message)}</small>
+                            <div style="margin-top: 10px;">
+                                <button onclick="loadFiles()" style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">
+                                    🔄 Retry
+                                </button>
+                            </div>
                         </div>`;
                 });
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         function getCategoryIcon(category) {
@@ -577,10 +613,14 @@
         }
         
         // Load files on page load
+        console.log('🚀 Page loaded, starting initial file load...');
         loadFiles();
         
         // Auto-refresh files every 10 seconds
-        setInterval(loadFiles, 10000);
+        setInterval(() => {
+            console.log('🔄 Auto-refreshing file list...');
+            loadFiles();
+        }, 10000);
     </script>
 </body>
 </html>
