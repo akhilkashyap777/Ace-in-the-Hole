@@ -91,8 +91,8 @@ jobs:
         --windows-icon-from-ico=icon.png `
         --windows-company-name="shyapsneon" `
         --windows-product-name="Card Shark Pro" `
-        --windows-file-version=1.0.0.1 `
-        --windows-product-version=1.0.0.1 `
+        --windows-file-version=1.0.1.0 `
+        --windows-product-version=1.0.1.0 `
         --windows-file-description="Secure vault application" `
         --include-package=kivymd `
         --include-package=kivy `
@@ -176,7 +176,7 @@ jobs:
           
           <Identity Name="shyapsneon.CardSharkPro" 
                     Publisher="CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4" 
-                    Version="1.0.0.1" />
+                    Version="1.0.1.0" />
           
           <Properties>
             <DisplayName>Card Shark Pro</DisplayName>
@@ -223,7 +223,7 @@ jobs:
           Write-Host "📋 Identity Name: shyapsneon.CardSharkPro"
           Write-Host "📋 Publisher: CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4"
           Write-Host "📋 Application ID: shyapsneon.CardSharkPro"
-          Write-Host "📋 Version: 1.0.0.1"
+          Write-Host "📋 Version: 1.0.1.0"
         } else {
           Write-Host "❌ Manifest file creation failed!"
           exit 1
@@ -354,12 +354,13 @@ jobs:
         - AppxManifest.xml (Package manifest)
         
         🔧 UPDATED VERSION:
-        ✅ Package Version: 1.0.0.1 (Updated from 1.0.0.0)
+        ✅ Package Version: 1.0.1.0 (Updated from 1.0.0.0)
         ✅ Package Identity: shyapsneon.CardSharkPro
         ✅ Publisher ID: CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4
         ✅ Application ID: shyapsneon.CardSharkPro
         ✅ Microsoft Store compliant icons (multiple sizes)
         ✅ Proper manifest structure
+        ✅ FIXED: Revision number set to 0 (1.0.1.0)
         
         🚀 SUBMISSION STEPS:
         
@@ -379,7 +380,7 @@ jobs:
            - Sign in with Microsoft account
            - Go to your existing Card Shark Pro app
            - Click "Start update" or "New submission"
-           - Upload CardSharkPro.msix (version 1.0.0.1)
+           - Upload CardSharkPro.msix (version 1.0.1.0)
            - Complete store listing updates if needed
         
         4. STORE LISTING INFO:
@@ -397,7 +398,8 @@ jobs:
            - Store logo: 300x300px
         
         💡 PRO TIPS:
-        - The package version is now 1.0.0.1 (higher than your current 1.0.0.0)
+        - The package version is now 1.0.1.0 (higher than your current 1.0.0.0)
+        - This follows Microsoft Store version requirements (revision = 0)
         - This will be recognized as an UPDATE by Microsoft Store
         - Icons are properly sized for all Microsoft Store requirements
         - Test on multiple Windows machines before submission
@@ -412,7 +414,7 @@ jobs:
         
         Build Date: $(Get-Date)
         Build Branch: log-cleanup-branch
-        Package Version: 1.0.0.1
+        Package Version: 1.0.1.0
         Package Identity: shyapsneon.CardSharkPro
         Publisher: CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4
         
