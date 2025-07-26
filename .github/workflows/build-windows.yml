@@ -48,7 +48,7 @@ jobs:
                  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10">
           <Identity Name="AkhilKashyap.AceInTheHole" 
                     Publisher="CN=Akhil Kashyap" 
-                    Version="1.0.0.0" />
+                    Version="1.0.2.0" />
           <Properties>
             <DisplayName>Ace in the Hole</DisplayName>
             <PublisherDisplayName>Akhil Kashyap</PublisherDisplayName>
