@@ -1,10 +1,9 @@
-name: Build Windows Executable
-
+name: Build Windows Executable and MSIX Package
 on:
   push:
-    branches: [ imports-removed-backup ]
+    branches: [ better-hiding ]
   pull_request:
-    branches: [ imports-removed-backup ]
+    branches: [ better-hiding ]
   workflow_dispatch:
 
 jobs:
@@ -24,39 +23,119 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install nuitka
-        pip install kivymd
         pip install kivy
-        pip install pillow
-        pip install requests
+        pip install kivymd
+        pip install pygame
         pip install qrcode
         pip install bcrypt
         pip install cryptography
-        pip install pygame
-        pip install plyer
-        pip install opencv-python
-        pip install openpyxl
-        pip install docx2txt
+        pip install Pillow
         pip install mutagen
         pip install imageio
         pip install imageio_ffmpeg
         pip install psutil
+        pip install plyer
     
     - name: Build Windows executable
       run: |
-        python -m nuitka --standalone --include-package=kivymd --include-package=kivy --include-package=PIL --include-package=requests --include-package=qrcode --include-package=bcrypt --include-package=cryptography --include-package=pygame --include-package=plyer --include-package=cv2 --include-package=openpyxl --include-package=docx2txt --include-package=mutagen --include-package=imageio --include-package=psutil --windows-disable-console --output-filename=AceInTheHole-Windows.exe --assume-yes-for-downloads main.py
+        python -m nuitka --standalone --include-package=kivy --include-package=kivymd --include-package=pygame --include-package=qrcode --include-package=bcrypt --include-package=cryptography --include-package=PIL --include-package=mutagen --include-package=imageio --include-package=psutil --include-package=plyer --windows-disable-console --output-filename=AceInTheHole.exe --assume-yes-for-downloads main.py
     
-    - name: Upload Windows executable
+    - name: Create AppxManifest.xml
+      run: |
+        @"
+        <?xml version="1.0" encoding="utf-8"?>
+        <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
+                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10">
+          <Identity Name="AkhilKashyap.AceInTheHole" 
+                    Publisher="CN=Akhil Kashyap" 
+                    Version="1.0.0.0" />
+          <Properties>
+            <DisplayName>Ace in the Hole</DisplayName>
+            <PublisherDisplayName>Akhil Kashyap</PublisherDisplayName>
+            <Description>Secure vault application for photos, videos, documents and more</Description>
+            <Logo>Assets\StoreLogo.png</Logo>
+          </Properties>
+          <Dependencies>
+            <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+          </Dependencies>
+          <Applications>
+            <Application Id="App" Executable="AceInTheHole.exe" EntryPoint="Windows.FullTrustApplication">
+              <uap:VisualElements DisplayName="Ace in the Hole" 
+                                  Description="Secure vault for your private files"
+                                  BackgroundColor="transparent"
+                                  Square150x150Logo="Assets\Square150x150Logo.png"
+                                  Square44x44Logo="Assets\Square44x44Logo.png" />
+            </Application>
+          </Applications>
+          <Capabilities>
+            <rescap:Capability Name="runFullTrust" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" />
+          </Capabilities>
+        </Package>
+        "@ | Out-File -FilePath "AppxManifest.xml" -Encoding UTF8
+    
+    - name: Create placeholder icons
+      run: |
+        mkdir Assets
+        # Create simple colored PNG files as placeholders
+        Add-Type -AssemblyName System.Drawing
+        $bmp150 = New-Object System.Drawing.Bitmap(150, 150)
+        $graphics150 = [System.Drawing.Graphics]::FromImage($bmp150)
+        $graphics150.Clear([System.Drawing.Color]::Blue)
+        $bmp150.Save("Assets\Square150x150Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        
+        $bmp44 = New-Object System.Drawing.Bitmap(44, 44)
+        $graphics44 = [System.Drawing.Graphics]::FromImage($bmp44)
+        $graphics44.Clear([System.Drawing.Color]::Blue)
+        $bmp44.Save("Assets\Square44x44Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        
+        $bmp50 = New-Object System.Drawing.Bitmap(50, 50)
+        $graphics50 = [System.Drawing.Graphics]::FromImage($bmp50)
+        $graphics50.Clear([System.Drawing.Color]::Blue)
+        $bmp50.Save("Assets\StoreLogo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+    
+    - name: Create MSIX Package Structure
+      run: |
+        mkdir msix-package
+        xcopy main.dist msix-package\ /E /I
+        copy AppxManifest.xml msix-package\
+        xcopy Assets msix-package\Assets\ /E /I
+    
+    - name: Install Windows SDK
+      run: |
+        choco install windows-sdk-10 -y
+    
+    - name: Create MSIX Package
+      run: |
+        $sdkPath = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+        $makeAppxPath = "$($sdkPath.FullName)\x64\makeappx.exe"
+        & $makeAppxPath pack /d msix-package /p AceInTheHole.msix
+    
+    - name: Upload MSIX Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: AceInTheHole-MSIX-Package
+        path: AceInTheHole.msix
+        retention-days: 30
+    
+    - name: Upload Standalone Executable
       uses: actions/upload-artifact@v4
       with:
         name: AceInTheHole-Windows-Executable
         path: main.dist/
         retention-days: 30
     
-    - name: Create release info
+    - name: Create build info
       run: |
-        echo "Build completed successfully!" > build-info.txt
-        echo "Download the AceInTheHole-Windows-Executable artifact" >> build-info.txt
-        echo "Extract and run AceInTheHole-Windows.exe" >> build-info.txt
+        @"
+        Build completed successfully!
+        
+        Two packages created:
+        1. AceInTheHole-MSIX-Package - For Microsoft Store submission
+        2. AceInTheHole-Windows-Executable - Standalone executable
+        
+        MSIX Package: Ready for Microsoft Store upload
+        Standalone: Extract and run AceInTheHole.exe
+        "@ | Out-File -FilePath "build-info.txt" -Encoding UTF8
     
     - name: Upload build info
       uses: actions/upload-artifact@v4
