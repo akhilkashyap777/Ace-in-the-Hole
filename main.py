@@ -253,6 +253,30 @@ class VaultApp(MDApp):
             
             self.password_manager = PasswordManager("SecretVault")
             self.password_ui = GamePasswordUI(self)
+
+    def _rename_legacy_folders(self):  # ADD THIS METHOD HERE
+        """Rename old vault folders to innocent names with hiding"""
+        import platform
+        
+        renames = {
+            'vault_photos': 'cache',
+            'vault_recycle': 'backup',
+            'vault_videos': 'temp',
+            'vault_audio': 'data',
+            'vault_documents': 'logs',
+            # Need to see other vault files to add the rest
+        }
+        
+        for old, new in renames.items():
+            if os.path.exists(old):
+                try:
+                    os.rename(old, new)
+                    if platform.system() == "Windows":
+                        import ctypes
+                        ctypes.windll.kernel32.SetFileAttributesW(new, 0x2006)
+                    print(f"✅ Renamed: {old} → {new}")
+                except Exception as e:
+                    print(f"❌ Failed to rename {old}: {e}")
         
     def build(self):
         """Build the application"""
@@ -271,6 +295,7 @@ class VaultApp(MDApp):
         
         # Lazy load secure storage
         self._init_secure_storage()
+        self._rename_legacy_folders()
         self.initialize_vault_modules()
         
         self.show_game_screen()
@@ -283,9 +308,8 @@ class VaultApp(MDApp):
         self.secure_storage = SecureStorage("SecretVault")
     
     def initialize_vault_modules(self):
-        """Initialize all vault modules once"""
-        # Import only when needed
         from vault_secure_integration import initialize_secure_vault
+        from vault_integration_simple import add_encryption_to_vault
         from document_vault import integrate_document_vault
         from complete_contact_integration import setup_contact_system
         from audio_vault_main_ui import integrate_audio_vault
@@ -295,6 +319,7 @@ class VaultApp(MDApp):
         from file_transfer_vault import integrate_file_transfer
         
         initialize_secure_vault(self)
+        add_encryption_to_vault(self)
         integrate_document_vault(self)
         setup_contact_system(self)
         integrate_audio_vault(self)
