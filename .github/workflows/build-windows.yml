@@ -100,9 +100,14 @@ jobs:
         copy AppxManifest.xml msix-package\
         xcopy Assets msix-package\Assets\ /E /I
     
-    - name: Install Windows SDK
+    - name: Setup Windows SDK
       run: |
-        choco install windows-sdk-10 -y
+        # Use the pre-installed Windows SDK on GitHub runners
+        $sdkPath = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+        if (-not $sdkPath) {
+          Write-Host "Installing Windows SDK via winget..."
+          winget install Microsoft.WindowsSDK.10 --accept-source-agreements --accept-package-agreements
+        }
     
     - name: Create MSIX Package
       run: |
