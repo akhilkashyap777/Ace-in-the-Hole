@@ -45,7 +45,8 @@ jobs:
         @"
         <?xml version="1.0" encoding="utf-8"?>
         <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
-                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10">
+                 xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+                 xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
           <Identity Name="AkhilKashyap.AceInTheHole" 
                     Publisher="CN=Akhil Kashyap" 
                     Version="1.0.2.0" />
@@ -68,7 +69,7 @@ jobs:
             </Application>
           </Applications>
           <Capabilities>
-            <rescap:Capability Name="runFullTrust" xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities" />
+            <rescap:Capability Name="runFullTrust" />
           </Capabilities>
         </Package>
         "@ | Out-File -FilePath "AppxManifest.xml" -Encoding UTF8
@@ -76,22 +77,28 @@ jobs:
     - name: Create placeholder icons
       run: |
         mkdir Assets
-        # Create simple colored PNG files as placeholders
+        # Create simple colored PNG files as placeholders using .NET
         Add-Type -AssemblyName System.Drawing
         $bmp150 = New-Object System.Drawing.Bitmap(150, 150)
         $graphics150 = [System.Drawing.Graphics]::FromImage($bmp150)
         $graphics150.Clear([System.Drawing.Color]::Blue)
         $bmp150.Save("Assets\Square150x150Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphics150.Dispose()
+        $bmp150.Dispose()
         
         $bmp44 = New-Object System.Drawing.Bitmap(44, 44)
         $graphics44 = [System.Drawing.Graphics]::FromImage($bmp44)
         $graphics44.Clear([System.Drawing.Color]::Blue)
         $bmp44.Save("Assets\Square44x44Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphics44.Dispose()
+        $bmp44.Dispose()
         
         $bmp50 = New-Object System.Drawing.Bitmap(50, 50)
         $graphics50 = [System.Drawing.Graphics]::FromImage($bmp50)
         $graphics50.Clear([System.Drawing.Color]::Blue)
         $bmp50.Save("Assets\StoreLogo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphics50.Dispose()
+        $bmp50.Dispose()
     
     - name: Create MSIX Package Structure
       run: |
@@ -100,20 +107,60 @@ jobs:
         copy AppxManifest.xml msix-package\
         xcopy Assets msix-package\Assets\ /E /I
     
-    - name: Setup Windows SDK
+    # CRITICAL FIX: Add Windows SDK to PATH properly
+    - name: Add Windows SDK to PATH
       run: |
-        # Use the pre-installed Windows SDK on GitHub runners
-        $sdkPath = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
-        if (-not $sdkPath) {
-          Write-Host "Installing Windows SDK via winget..."
-          winget install Microsoft.WindowsSDK.10 --accept-source-agreements --accept-package-agreements
+        # Find the latest Windows SDK version
+        $sdkVersions = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory | 
+                       Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } | 
+                       Sort-Object { [Version]$_.Name } -Descending
+        
+        if ($sdkVersions.Count -gt 0) {
+            $latestSdk = $sdkVersions[0]
+            $sdkBinPath = Join-Path $latestSdk.FullName "x64"
+            Write-Host "Adding to PATH: $sdkBinPath"
+            echo "$sdkBinPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        } else {
+            Write-Host "No Windows SDK found, trying alternative methods..."
+            # Try common locations
+            $alternatePaths = @(
+                "C:\Program Files (x86)\Windows Kits\10\bin\x64",
+                "C:\Program Files (x86)\Windows Kits\10\App Certification Kit"
+            )
+            foreach ($path in $alternatePaths) {
+                if (Test-Path "$path\makeappx.exe") {
+                    Write-Host "Found makeappx at: $path"
+                    echo "$path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+                    break
+                }
+            }
+        }
+    
+    - name: Verify makeappx availability
+      run: |
+        Write-Host "Checking if makeappx is now available..."
+        try {
+            $result = & makeappx.exe /?
+            Write-Host "✅ makeappx.exe is available!"
+        } catch {
+            Write-Host "❌ makeappx.exe still not found. Searching system..."
+            Get-ChildItem "C:\Program Files (x86)\Windows Kits" -Recurse -Name "makeappx.exe" -ErrorAction SilentlyContinue
         }
     
     - name: Create MSIX Package
       run: |
-        $sdkPath = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory | Sort-Object Name -Descending | Select-Object -First 1
-        $makeAppxPath = "$($sdkPath.FullName)\x64\makeappx.exe"
-        & $makeAppxPath pack /d msix-package /p AceInTheHole.msix
+        # Use simple makeappx command (should work now that PATH is set)
+        makeappx.exe pack /o /v /d msix-package /p AceInTheHole.msix
+        
+        # Verify the package was created
+        if (Test-Path "AceInTheHole.msix") {
+            Write-Host "✅ MSIX package created successfully!"
+            $fileInfo = Get-Item "AceInTheHole.msix"
+            Write-Host "Package size: $($fileInfo.Length) bytes"
+        } else {
+            Write-Host "❌ MSIX package creation failed!"
+            exit 1
+        }
     
     - name: Upload MSIX Package
       uses: actions/upload-artifact@v4
