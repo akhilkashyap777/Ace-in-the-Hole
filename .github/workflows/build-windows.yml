@@ -136,17 +136,6 @@ jobs:
             }
         }
     
-    - name: Verify makeappx availability
-      run: |
-        Write-Host "Checking if makeappx is now available..."
-        try {
-            $result = & makeappx.exe /?
-            Write-Host "✅ makeappx.exe is available!"
-        } catch {
-            Write-Host "❌ makeappx.exe still not found. Searching system..."
-            Get-ChildItem "C:\Program Files (x86)\Windows Kits" -Recurse -Name "makeappx.exe" -ErrorAction SilentlyContinue
-        }
-    
     - name: Create MSIX Package
       run: |
         # Use simple makeappx command (should work now that PATH is set)
