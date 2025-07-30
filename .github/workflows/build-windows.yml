@@ -48,18 +48,18 @@ jobs:
     - name: Verify ALL conditional imports
       run: |
         python -c "
-        print('🧪 Testing ALL conditional imports...')
-        import mutagen; print('✅ mutagen')
-        import pygame; print('✅ pygame') 
-        import imageio; print('✅ imageio')
-        import psutil; print('✅ psutil')
-        import plyer; print('✅ plyer')
-        import bcrypt; print('✅ bcrypt')
-        import cv2; print('✅ opencv-python')
-        import qrcode; print('✅ qrcode')
-        import numpy; print('✅ numpy')
-        import tkinter; print('✅ tkinter')
-        print('🎉 All imports successful!')
+        print('Testing ALL conditional imports...')
+        import mutagen; print('OK mutagen')
+        import pygame; print('OK pygame') 
+        import imageio; print('OK imageio')
+        import psutil; print('OK psutil')
+        import plyer; print('OK plyer')
+        import bcrypt; print('OK bcrypt')
+        import cv2; print('OK opencv-python')
+        import qrcode; print('OK qrcode')
+        import numpy; print('OK numpy')
+        import tkinter; print('OK tkinter')
+        print('All imports successful!')
         "
     
     - name: Build Windows executable
@@ -102,11 +102,11 @@ jobs:
     - name: Verify executable was created
       run: |
         if (Test-Path "main.dist\AceInTheHole.exe") {
-            Write-Host "✅ Executable created successfully!"
+            Write-Host "Executable created successfully!"
             $fileInfo = Get-Item "main.dist\AceInTheHole.exe"
             Write-Host "Executable size: $($fileInfo.Length) bytes"
         } else {
-            Write-Host "❌ Executable creation failed!"
+            Write-Host "Executable creation failed!"
             Get-ChildItem main.dist -Recurse
             exit 1
         }
@@ -212,11 +212,11 @@ jobs:
         makeappx.exe pack /o /v /d msix-package /p AceInTheHole.msix
         
         if (Test-Path "AceInTheHole.msix") {
-            Write-Host "✅ MSIX package created successfully!"
+            Write-Host "MSIX package created successfully!"
             $fileInfo = Get-Item "AceInTheHole.msix"
             Write-Host "Package size: $($fileInfo.Length) bytes"
         } else {
-            Write-Host "❌ MSIX package creation failed!"
+            Write-Host "MSIX package creation failed!"
             exit 1
         }
     
@@ -237,25 +237,25 @@ jobs:
     - name: Create build info
       run: |
         @"
-        🎉 COMPLETE BUILD - All Dependencies Included!
+        COMPLETE BUILD - All Dependencies Included!
         
-        ✅ Fixed All Issues:
-        - ✅ Added mutagen (audio metadata)
-        - ✅ Added pygame (audio playback)  
-        - ✅ Added imageio + imageio-ffmpeg (video processing)
-        - ✅ Added psutil (memory monitoring)
-        - ✅ Added plyer (cross-platform APIs)
-        - ✅ Added bcrypt (password hashing)
-        - ✅ Added opencv-python (video processing)
-        - ✅ Added qrcode (QR generation)
-        - ✅ Added numpy (required by opencv)
-        - ✅ Included all built-in modules explicitly
+        Fixed All Issues:
+        - Added mutagen (audio metadata)
+        - Added pygame (audio playback)  
+        - Added imageio + imageio-ffmpeg (video processing)
+        - Added psutil (memory monitoring)
+        - Added plyer (cross-platform APIs)
+        - Added bcrypt (password hashing)
+        - Added opencv-python (video processing)
+        - Added qrcode (QR generation)
+        - Added numpy (required by opencv)
+        - Included all built-in modules explicitly
         
-        📦 Packages Created:
+        Packages Created:
         1. AceInTheHole-MSIX-Complete - Store-ready package
         2. AceInTheHole-Executable-Complete - Standalone app
         
-        🚀 This build should resolve the 'Processing...' freeze!
+        This build should resolve the 'Processing...' freeze!
         
         Version: 1.0.4.0
         Total packages included: 27
