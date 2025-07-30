@@ -39,7 +39,6 @@ jobs:
         # Your existing packages:
         pip install cryptography==45.0.5
         pip install cx_Freeze==8.3.0
-        pip install jnius==1.1.0
         pip install kivy==2.3.1
         pip install kivymd==1.2.0
         pip install Pillow==11.3.0
@@ -70,7 +69,6 @@ jobs:
           --include-package=cx_Freeze `
           --include-package=imageio `
           --include-package=imageio_ffmpeg `
-          --include-package=jnius `
           --include-package=kivy `
           --include-package=kivymd `
           --include-package=mutagen `
