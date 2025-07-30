@@ -64,39 +64,39 @@ jobs:
     
     - name: Build Windows executable
       run: |
-        python -m nuitka --standalone ^
-          --include-package=bcrypt ^
-          --include-package=cryptography ^
-          --include-package=cx_Freeze ^
-          --include-package=imageio ^
-          --include-package=imageio_ffmpeg ^
-          --include-package=jnius ^
-          --include-package=kivy ^
-          --include-package=kivymd ^
-          --include-package=mutagen ^
-          --include-package=numpy ^
-          --include-package=cv2 ^
-          --include-package=PIL ^
-          --include-package=plyer ^
-          --include-package=psutil ^
-          --include-package=pygame ^
-          --include-package=qrcode ^
-          --include-package=requests ^
-          --include-package=tkinter ^
-          --include-package=threading ^
-          --include-package=json ^
-          --include-package=datetime ^
-          --include-package=os ^
-          --include-package=shutil ^
-          --include-package=webbrowser ^
-          --include-package=subprocess ^
-          --include-package=platform ^
-          --include-package=re ^
-          --include-module=tkinter.filedialog ^
-          --include-module=tkinter.messagebox ^
-          --windows-disable-console ^
-          --output-filename=AceInTheHole.exe ^
-          --assume-yes-for-downloads ^
+        python -m nuitka --standalone `
+          --include-package=bcrypt `
+          --include-package=cryptography `
+          --include-package=cx_Freeze `
+          --include-package=imageio `
+          --include-package=imageio_ffmpeg `
+          --include-package=jnius `
+          --include-package=kivy `
+          --include-package=kivymd `
+          --include-package=mutagen `
+          --include-package=numpy `
+          --include-package=cv2 `
+          --include-package=PIL `
+          --include-package=plyer `
+          --include-package=psutil `
+          --include-package=pygame `
+          --include-package=qrcode `
+          --include-package=requests `
+          --include-package=tkinter `
+          --include-package=threading `
+          --include-package=json `
+          --include-package=datetime `
+          --include-package=os `
+          --include-package=shutil `
+          --include-package=webbrowser `
+          --include-package=subprocess `
+          --include-package=platform `
+          --include-package=re `
+          --include-module=tkinter.filedialog `
+          --include-module=tkinter.messagebox `
+          --windows-disable-console `
+          --output-filename=AceInTheHole.exe `
+          --assume-yes-for-downloads `
           main.py
     
     - name: Verify executable was created
