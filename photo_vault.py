@@ -75,9 +75,6 @@ except ImportError:
     
 DEBUG_MODE = True
 
-if DEBUG_MODE:
-    print("  ♻️ Safe deletion: Recycle bin integration")
-
 # Quick integration test function
 def test_photo_vault_integration():
     """
@@ -93,7 +90,6 @@ def test_photo_vault_integration():
         
         core = PhotoVaultCore(mock_app)
         
-        print("🔍 Image detection test:")
         test_files = [
             "photo.jpg", "image.png", "graphic.gif", "picture.bmp",
             "modern.webp", "scan.tiff", "icon.svg", "phone.heic",
@@ -103,7 +99,6 @@ def test_photo_vault_integration():
         return True
         
     except Exception as e:
-        print(f"❌ Photo Vault integration test failed: {e}")
         return False
 
 if __name__ == "__main__":

@@ -233,7 +233,7 @@ class PhotoVaultCore:
                             counter += 1
                         
                         # Copy file to vault directory
-                        shutil.copy2(file_path, destination)
+                        shutil.move(file_path, destination)
                         imported_files.append(destination)
                         
                     except Exception as e:
@@ -294,8 +294,6 @@ class PhotoVaultCore:
                 else:
                     return False
             else:
-                # Fallback to permanent deletion if recycle bin not available
-                print("⚠️ Recycle bin not available, using permanent deletion")
                 if os.path.exists(photo_path):
                     os.remove(photo_path)
                     return True

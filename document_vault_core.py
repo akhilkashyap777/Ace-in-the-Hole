@@ -296,7 +296,7 @@ class DocumentVaultCore:
                         destination = os.path.join(destination_dir, safe_filename)
                         
                         # Copy file to vault
-                        shutil.copy2(file_path, destination)
+                        shutil.move(file_path, destination)
                         
                         imported_files.append({
                             'path': destination,

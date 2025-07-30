@@ -162,12 +162,12 @@ class SecureStorage:
     def get_secure_base_directory(self):
         """✅ PERSISTENT + DEEP NESTED: Get or create deeply hidden directory"""
         if self._base_dir_cache is None:
-            if self.chosen_base_path and os.path.exists(self.chosen_base_path):
-                # Use existing saved path
+            if self.chosen_base_path:  # ← REMOVED: and os.path.exists(self.chosen_base_path)
+                # Use existing saved path - ALWAYS, regardless of accessibility
                 self._base_dir_cache = self.chosen_base_path
                 print(f"📂 Using saved location: {self._base_dir_cache}")
             else:
-                # Find new location and save it
+                # Find new location and save it - ONLY if no path was ever saved
                 if platform.system() == "Windows":
                     self._base_dir_cache = self._find_windows_deep_location()
                 elif platform.system() == "Darwin":  # macOS

@@ -256,6 +256,7 @@ class VaultApp(MDApp):
 
     def _rename_legacy_folders(self):  # ADD THIS METHOD HERE
         """Rename old vault folders to innocent names with hiding"""
+        print("hello world")
         import platform
         
         renames = {
