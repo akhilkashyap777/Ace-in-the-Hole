@@ -6,7 +6,6 @@ from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.metrics import dp
 import webbrowser
-import tkinter as tk
 
 # Desktop-only version - All Android code removed
 ANDROID = False
@@ -492,15 +491,10 @@ class ContactManager:
         return main_layout
     
     def copy_to_clipboard(self, text):
-        """Copy text to clipboard (Desktop only)"""
+        """Copy text to clipboard using plyer"""
         try:
-            root = tk.Tk()
-            root.withdraw()
-            root.clipboard_clear()
-            root.clipboard_append(text)
-            root.update()
-            root.destroy()
-            
+            from plyer import clipboard
+            clipboard.copy(text)
             self.show_toast(f"Copied: {text}")
         except Exception as e:
             self.show_error_popup(f"Could not copy to clipboard: {e}")
@@ -554,7 +548,7 @@ class ContactManager:
         )
         popup.open()
         from kivy.clock import Clock
-        Clock.schedule_once(lambda dt: popup.dismiss(), 2)
+        pass
 
 
 def integrate_contact_management(vault_app):

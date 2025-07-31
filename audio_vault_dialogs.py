@@ -9,8 +9,13 @@ from kivy.uix.popup import Popup
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.clock import Clock
 from kivy.metrics import dp
-import tkinter as tk
-from tkinter import filedialog
+
+# Import plyer for cross-platform file dialogs
+try:
+    from plyer import filechooser
+    PLYER_AVAILABLE = True
+except ImportError:
+    PLYER_AVAILABLE = False
 
 # Import stats widget
 from audio_vault_stats import AudioVaultStatsWidget
@@ -20,37 +25,33 @@ from audio_vault_stats import AudioVaultStatsWidget
 # ===============================================================================
 
 def show_add_audio_dialog(audio_vault_core, refresh_callback):
-    """Show file picker to add audio files - Desktop implementation"""
-    desktop_file_picker(audio_vault_core, refresh_callback)
+    """Show file picker to add audio files - Cross-platform implementation"""
+    if PLYER_AVAILABLE:
+        plyer_file_picker(audio_vault_core, refresh_callback)
+    else:
+        fallback_file_picker(audio_vault_core, refresh_callback)
 
-def desktop_file_picker(audio_vault_core, refresh_callback):
-    """Desktop file picker using tkinter"""
-    def pick_files():
-        try:
-            root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            
-            file_paths = filedialog.askopenfilenames(
-                title="Select Audio Files",
-                filetypes=[
-                    ("Audio files", "*.mp3 *.wav *.flac *.aac *.m4a *.ogg *.wma *.opus"),
-                    ("All files", "*.*")
-                ]
-            )
-            
-            root.destroy()
-            
-            # Schedule callback on main thread
-            Clock.schedule_once(lambda dt: handle_selection_async(file_paths, audio_vault_core, refresh_callback), 0)
-            
-        except Exception as e:
-            print(f"Desktop file picker error: {e}")
-            Clock.schedule_once(lambda dt: fallback_file_picker(audio_vault_core, refresh_callback), 0)
-    
-    # Run in separate thread to avoid blocking
-    thread = threading.Thread(target=pick_files)
-    thread.daemon = True
-    thread.start()
+def plyer_file_picker(audio_vault_core, refresh_callback):
+    """Universal file picker using plyer - works on all platforms"""
+    try:
+        def on_selection(selection):
+            # Direct call instead of Clock.schedule_once - NUITKA FIX
+            handle_selection_async(selection, audio_vault_core, refresh_callback)
+        
+        # Use plyer's cross-platform file chooser
+        filechooser.open_file(
+            on_selection=on_selection,
+            multiple=True,
+            filters=[
+                ("Audio files", "*.mp3", "*.wav", "*.flac", "*.aac", "*.m4a", "*.ogg", "*.wma", "*.opus"),
+                ("All files", "*")
+            ],
+            title="Select Audio Files to Add to Vault"
+        )
+        
+    except Exception as e:
+        print(f"Plyer file chooser error: {e}")
+        fallback_file_picker(audio_vault_core, refresh_callback)
 
 def fallback_file_picker(audio_vault_core, refresh_callback):
     """Fallback file picker using Kivy's FileChooser"""
@@ -68,7 +69,12 @@ def fallback_file_picker(audio_vault_core, refresh_callback):
     content.add_widget(instruction_label)
     
     # File chooser
-    start_path = os.path.expanduser('~')
+    try:
+        start_path = os.path.join(os.path.expanduser('~'), 'Music')
+        if not os.path.exists(start_path):
+            start_path = os.path.expanduser('~')
+    except:
+        start_path = os.getcwd()
     
     file_chooser = FileChooserIconView(
         path=start_path,
@@ -460,30 +466,34 @@ def play_audio_file_system(audio_file):
 # ===============================================================================
 
 def export_audio_file(audio_file, audio_vault_core):
-    """Export audio file using desktop file picker"""
-    export_with_desktop_picker(audio_file, audio_vault_core)
+    """Export audio file using cross-platform folder picker"""
+    if PLYER_AVAILABLE:
+        export_with_plyer_picker(audio_file, audio_vault_core)
+    else:
+        export_with_fallback_picker(audio_file, audio_vault_core)
 
-def export_with_desktop_picker(audio_file, audio_vault_core):
-    """Export using desktop folder picker"""
-    def pick_folder():
-        try:
-            root = tk.Tk()
-            root.withdraw()
-            
-            folder_path = filedialog.askdirectory(title="Select Export Destination")
-            root.destroy()
-            
-            if folder_path:
+def export_with_plyer_picker(audio_file, audio_vault_core):
+    """Export using plyer folder picker"""
+    try:
+        def on_folder_selection(selection):
+            if selection:
+                # plyer returns a list, take the first folder
+                folder_path = selection[0] if isinstance(selection, list) else selection
                 destination_path = os.path.join(folder_path, audio_file['original_filename'])
                 Clock.schedule_once(lambda dt: export_audio_file_with_progress(audio_file, destination_path, audio_vault_core), 0)
-            
-        except Exception as e:
-            print(f"Desktop export picker error: {e}")
-            Clock.schedule_once(lambda dt: export_with_fallback_picker(audio_file, audio_vault_core), 0)
-    
-    thread = threading.Thread(target=pick_folder)
-    thread.daemon = True
-    thread.start()
+            else:
+                # User cancelled
+                pass
+        
+        # Use plyer's folder chooser
+        filechooser.choose_dir(
+            on_selection=on_folder_selection,
+            title="Select Export Destination Folder"
+        )
+        
+    except Exception as e:
+        print(f"Plyer export picker error: {e}")
+        export_with_fallback_picker(audio_file, audio_vault_core)
 
 def export_with_fallback_picker(audio_file, audio_vault_core):
     """Fallback export dialog using Kivy file chooser"""
@@ -502,7 +512,15 @@ def export_with_fallback_picker(audio_file, audio_vault_core):
     content.add_widget(info_label)
     
     # File chooser for destination
+    try:
+        start_path = os.path.join(os.path.expanduser('~'), 'Music')
+        if not os.path.exists(start_path):
+            start_path = os.path.expanduser('~')
+    except:
+        start_path = os.getcwd()
+    
     file_chooser = FileChooserIconView(
+        path=start_path,
         dirselect=True,
         size_hint_y=0.6
     )
@@ -615,8 +633,7 @@ def export_audio_file_with_progress(audio_file, destination_path, audio_vault_co
             Clock.schedule_once(lambda dt: error_popup.dismiss(), 4)
     
     # Start export in background
-    thread = threading.Thread(target=do_export)
-    thread.daemon = True
+    thread = threading.Thread(target=do_export, daemon=True)
     thread.start()
 
 # ===============================================================================
@@ -731,8 +748,7 @@ def delete_audio_file_with_progress(audio_file, audio_vault_core, refresh_callba
             Clock.schedule_once(lambda dt: error_popup.dismiss(), 4)
     
     # Start deletion in background
-    thread = threading.Thread(target=do_delete)
-    thread.daemon = True
+    thread = threading.Thread(target=do_delete, daemon=True)
     thread.start()
 
 # ===============================================================================

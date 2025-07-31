@@ -17,14 +17,9 @@ from kivy.uix.label import Label
 from kivy.uix.image import Image
 from kivymd.uix.card import MDCard
 import gc
-
+from plyer import filechooser
 # Import the core video vault functionality
 from video_vault_core import VideoVaultCore
-
-# REMOVED: Android imports and detection
-# Desktop-only imports
-import tkinter as tk
-from tkinter import filedialog
 
 # SIMPLIFIED: Desktop-only platform detection
 ANDROID = False  # Always False for desktop-only version
@@ -113,27 +108,26 @@ class VideoVault(VideoVaultCore):
         self.desktop_file_picker(callback)
     
     def desktop_file_picker(self, callback):
-        """Desktop file picker using tkinter"""
+        """Desktop file picker using plyer"""
         def pick_files():
             try:
-                root = tk.Tk()
-                root.withdraw()  # Hide the main window
+                def on_selection(selection):
+                    if selection:
+                        Clock.schedule_once(lambda dt: self.handle_selection_async(selection, callback), 0)
+                    else:
+                        self.processing = False
                 
-                file_paths = filedialog.askopenfilenames(
-                    title="Select Videos from Computer",  # UPDATED: More desktop-appropriate
-                    filetypes=[
-                        ("Video files", "*.mp4 *.avi *.mov *.mkv *.wmv *.flv *.webm *.3gp *.ogg *.ogv"),
-                        ("All files", "*.*")
+                filechooser.open_file(
+                    on_selection=on_selection,
+                    multiple=True,
+                    filters=[
+                        ("Video files", "*.mp4", "*.avi", "*.mov", "*.mkv", "*.wmv", "*.flv", "*.webm", "*.3gp", "*.ogg", "*.ogv"),
+                        ("All files", "*")
                     ]
                 )
                 
-                root.destroy()
-                
-                # Schedule callback on main thread
-                Clock.schedule_once(lambda dt: self.handle_selection_async(file_paths, callback), 0)
-                
             except Exception as e:
-                print(f"Desktop file picker error: {e}")
+                print(f"Plyer file picker error: {e}")
                 self.processing = False
                 # Fallback to Kivy file chooser
                 self.fallback_file_picker(callback)

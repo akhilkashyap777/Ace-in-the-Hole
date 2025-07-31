@@ -10,13 +10,17 @@ from PIL import Image as PILImage
 # Cross-platform imports
 try:
     from android.permissions import request_permissions, Permission
-    from plyer import filechooser
     from android.storage import primary_external_storage_path, app_storage_path
     ANDROID = True
 except ImportError:
     ANDROID = False
-    import tkinter as tk
-    from tkinter import filedialog
+
+# Import plyer for all platforms
+try:
+    from plyer import filechooser
+    PLYER_AVAILABLE = True
+except ImportError:
+    PLYER_AVAILABLE = False
 
 class PhotoVaultCore:
     """
@@ -24,7 +28,7 @@ class PhotoVaultCore:
     
     Features:
     - Universal image format detection (MIME + PIL verification)
-    - Cross-platform file operations
+    - Cross-platform file operations using plyer
     - Export functionality with folder selection
     - Recycle bin integration
     """
@@ -86,62 +90,61 @@ class PhotoVaultCore:
                 print(f"Permission error: {e}")
     
     def select_photos_from_gallery(self, callback):
-        """Open gallery/file picker to select photos"""
+        """Open gallery/file picker to select photos - FAST & NUITKA COMPATIBLE"""
         if self.processing:
             return
             
         self.processing = True
         
-        if ANDROID:
-            self.android_file_picker(callback)
+        # Use plyer for ALL platforms - it's fast and Nuitka-friendly
+        if PLYER_AVAILABLE:
+            self.plyer_file_picker(callback)
         else:
-            self.desktop_file_picker(callback)
+            # Fallback to Kivy if plyer not available
+            self.fallback_file_picker(callback)
     
-    def android_file_picker(self, callback):
-        """Android file picker using plyer"""
+    def plyer_file_picker(self, callback):
+        """Universal file picker using plyer - works on Android, Windows, Linux, macOS"""
         try:
             def on_selection(selection):
-                Clock.schedule_once(lambda dt: self.handle_selection_async(selection, callback), 0)
+                # Direct call instead of Clock.schedule_once
+                self.handle_selection_async(selection, callback)
             
+            # Set initial path based on platform
+            if ANDROID:
+                try:
+                    initial_path = primary_external_storage_path()
+                except:
+                    initial_path = '/sdcard'
+            else:
+                # For Windows/Linux/macOS, start in Pictures folder
+                try:
+                    initial_path = os.path.join(os.path.expanduser('~'), 'Pictures')
+                    if not os.path.exists(initial_path):
+                        initial_path = os.path.expanduser('~')
+                except:
+                    initial_path = os.getcwd()
+            
+            # Use plyer's filechooser - fast and cross-platform
             filechooser.open_file(
                 on_selection=on_selection,
                 multiple=True,
-                filters=['*.*']  # Accept all files, filter with is_image_file()
+                filters=[
+                    ("Image files", "*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.tiff", "*.webp", "*.heic"),
+                    ("All files", "*")
+                ],
+                path=initial_path,
+                title="Select Photos to Add to Vault"
             )
+            
         except Exception as e:
-            print(f"Error opening Android file chooser: {e}")
+            print(f"Plyer file chooser error: {e}")
             self.processing = False
             self.fallback_file_picker(callback)
-    
-    def desktop_file_picker(self, callback):
-        """Desktop file picker using tkinter"""
-        def pick_files():
-            try:
-                root = tk.Tk()
-                root.withdraw()  # Hide the main window
-                
-                file_paths = filedialog.askopenfilenames(
-                    title="Select Photos",
-                    filetypes=[
-                        ("All Image files", "*.*"),  # Let system detect
-                        ("All files", "*.*")
-                    ]
-                )
-                
-                root.destroy()
-                
-                # Schedule callback on main thread
-                Clock.schedule_once(lambda dt: self.handle_selection_async(file_paths, callback), 0)
-                
-            except Exception as e:
-                print(f"Desktop file picker error: {e}")
-                self.processing = False
-        
-        # Run in separate thread to avoid blocking
-        thread = threading.Thread(target=pick_files)
-        thread.daemon = True
-        thread.start()
-    
+    def handle_selection_debug(self, selection, callback):
+        print(f"DEBUG: handle_selection_debug called with {len(selection) if selection else 0} files")
+        print(f"DEBUG: About to call handle_selection_async")
+        self.handle_selection_async(selection, callback) 
     def fallback_file_picker(self, callback):
         """Fallback file picker using Kivy's FileChooser"""
         from kivy.uix.boxlayout import BoxLayout
@@ -159,7 +162,12 @@ class PhotoVaultCore:
             except:
                 start_path = '/sdcard'
         else:
-            start_path = os.path.expanduser('~')
+            try:
+                start_path = os.path.join(os.path.expanduser('~'), 'Pictures')
+                if not os.path.exists(start_path):
+                    start_path = os.path.expanduser('~')
+            except:
+                start_path = os.getcwd()
         
         filechooser = FileChooserIconView(
             path=start_path,
@@ -248,13 +256,7 @@ class PhotoVaultCore:
                 Clock.schedule_once(lambda dt: self.finish_import([], [], callback), 0)
         
         # Run file operations in background thread
-        thread = threading.Thread(target=process_files)
-        thread.daemon = True
-        thread.start()
-        
-        # Run file operations in background thread
-        thread = threading.Thread(target=process_files)
-        thread.daemon = True
+        thread = threading.Thread(target=process_files, daemon=True)
         thread.start()
     
     def finish_import(self, imported_files, skipped_files, callback):
@@ -309,7 +311,7 @@ class PhotoVaultCore:
             if not os.path.exists(photo_path):
                 return {'success': False, 'error': 'Photo not found'}
             
-            # Use the actual filename (no more vault prefix removal needed)
+            # Use the actual filename
             original_name = os.path.basename(photo_path)
             
             if not user_selected_folder:
@@ -347,62 +349,31 @@ class PhotoVaultCore:
             return {'success': False, 'error': str(e), 'needs_folder_selection': True}
     
     def select_export_folder(self, callback):
-        """Select folder for export - Cross-platform"""
-        if ANDROID:
-            self.android_folder_picker(callback)
-        else:
-            self.desktop_folder_picker(callback)
-
-    def android_folder_picker(self, callback):
-        """Android folder picker using SAF"""
-        try:
-            # Use Storage Access Framework for folder selection
-            from jnius import autoclass, cast
-            
-            PythonActivity = autoclass('org.kivy.android.PythonActivity')
-            Intent = autoclass('android.content.Intent')
-            
-            intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-            currentActivity.startActivityForResult(intent, 42)  # Request code 42
-            
-            # Note: You'll need to handle the result in your Android activity
-            # For now, fallback to basic implementation
-            self.fallback_folder_picker(callback)
-            
-        except Exception as e:
-            print(f"Android folder picker error: {e}")
-            callback({'success': False, 'error': 'Failed to open folder picker'})
-
-    def desktop_folder_picker(self, callback):
-        """Desktop folder picker"""
-        def pick_folder():
+        """Select folder for export using plyer"""
+        if PLYER_AVAILABLE:
             try:
-                root = tk.Tk()
-                root.withdraw()
+                def on_folder_selection(selection):
+                    if selection:
+                        # plyer returns a list, take the first folder
+                        folder_path = selection[0] if isinstance(selection, list) else selection
+                        Clock.schedule_once(lambda dt: callback({'success': True, 'folder_path': folder_path}), 0)
+                    else:
+                        Clock.schedule_once(lambda dt: callback({'success': False, 'error': 'No folder selected'}), 0)
                 
-                folder_path = filedialog.askdirectory(
+                # Use plyer's folder chooser
+                filechooser.choose_dir(
+                    on_selection=on_folder_selection,
                     title="Select Export Destination Folder"
                 )
                 
-                root.destroy()
-                
-                if folder_path:
-                    Clock.schedule_once(lambda dt: callback({'success': True, 'folder_path': folder_path}), 0)
-                else:
-                    Clock.schedule_once(lambda dt: callback({'success': False, 'error': 'No folder selected'}), 0)
-                    
             except Exception as e:
-                print(f"Desktop folder picker error: {e}")
-                Clock.schedule_once(lambda dt: callback({'success': False, 'error': str(e)}), 0)
-        
-        thread = threading.Thread(target=pick_folder)
-        thread.daemon = True
-        thread.start()
+                print(f"Plyer folder chooser error: {e}")
+                self.fallback_folder_picker(callback)
+        else:
+            self.fallback_folder_picker(callback)
 
     def fallback_folder_picker(self, callback):
-        """Fallback folder picker using Kivy"""
-        # Use app's external storage as fallback
+        """Fallback folder picker"""
         try:
             if ANDROID:
                 fallback_folder = os.path.join(app_storage_path(), 'exported_photos')

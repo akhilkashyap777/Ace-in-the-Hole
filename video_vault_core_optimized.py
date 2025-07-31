@@ -11,10 +11,6 @@ from PIL import Image as PILImage
 # No more android.permissions, plyer, android.storage
 ANDROID = False  # Always False for desktop-only version
 
-# Desktop-only imports
-import tkinter as tk
-from tkinter import filedialog
-
 try:
     import imageio
     import imageio_ffmpeg

@@ -5,8 +5,6 @@ import mimetypes
 from datetime import datetime
 from kivy.clock import Clock
 import re
-import tkinter as tk
-from tkinter import filedialog
 
 # Desktop-only version - All Android code removed
 ANDROID = False
@@ -179,29 +177,34 @@ class DocumentVaultCore:
         self.desktop_file_picker(callback)
     
     def desktop_file_picker(self, callback):
-        """Desktop file picker - Windows, macOS, Linux"""
+        """Desktop file picker using plyer"""
         def pick_files():
             try:
-                root = tk.Tk()
-                root.withdraw()
+                from plyer import filechooser
                 
-                file_paths = filedialog.askopenfilenames(
-                    title="Select Documents",
-                    filetypes=[
-                        ("Document files", "*.pdf *.doc *.docx *.txt *.rtf"),
-                        ("Spreadsheets", "*.xls *.xlsx *.csv"),
-                        ("Code files", "*.py *.js *.html *.css *.json"),
-                        ("Archives", "*.zip *.rar *.7z"),
-                        ("Contact files", "*.vcf *.contact"),
-                        ("All files", "*.*")
+                def on_selection(selection):
+                    if selection:
+                        self.handle_selection_async(selection, callback)
+                    else:
+                        self.processing = False
+                
+                filechooser.open_file(
+                    on_selection=on_selection,
+                    multiple=True,
+                    filters=[
+                        ("Document files", "*.pdf", "*.doc", "*.docx", "*.txt", "*.rtf"),
+                        ("Spreadsheets", "*.xls", "*.xlsx", "*.csv"),
+                        ("Code files", "*.py", "*.js", "*.html", "*.css", "*.json"),
+                        ("Archives", "*.zip", "*.rar", "*.7z"),
+                        ("Contact files", "*.vcf", "*.contact"),
+                        ("All files", "*")
                     ]
                 )
                 
-                root.destroy()
-                Clock.schedule_once(lambda dt: self.handle_selection_async(file_paths, callback), 0)
-                
             except Exception as e:
-                print(f"Desktop file picker error: {e}")
+                print(f"Plyer file picker error: {e}")
+                # Fallback to Kivy file picker
+                Clock.schedule_once(lambda dt: self.fallback_file_picker(callback), 0)
                 self.processing = False
         
         thread = threading.Thread(target=pick_files)
@@ -247,7 +250,7 @@ class DocumentVaultCore:
         def on_select(instance):
             if filechooser.selection:
                 popup.dismiss()
-                Clock.schedule_once(lambda dt: self.handle_selection_async(filechooser.selection, callback), 0.1)
+                self.handle_selection_async(filechooser.selection, callback)
             else:
                 popup.dismiss()
                 self.processing = False
@@ -547,25 +550,27 @@ class DocumentVaultCore:
         self.desktop_folder_picker(callback)
 
     def desktop_folder_picker(self, callback):
-        """Desktop folder picker"""
+        """Desktop folder picker using plyer"""
         def pick_folder():
             try:
-                root = tk.Tk()
-                root.withdraw()
+                from plyer import filechooser
                 
-                folder_path = filedialog.askdirectory(
+                def on_selection(selection):
+                    if selection and len(selection) > 0:
+                        # For folder selection, plyer returns the selected folder path
+                        folder_path = selection[0] if isinstance(selection, list) else selection
+                        Clock.schedule_once(lambda dt: callback({'success': True, 'folder_path': folder_path}), 0)
+                    else:
+                        Clock.schedule_once(lambda dt: callback({'success': False, 'error': 'No folder selected'}), 0)
+                
+                # Use choose_dir for folder selection
+                filechooser.choose_dir(
+                    on_selection=on_selection,
                     title="Select Export Destination Folder"
                 )
-                
-                root.destroy()
-                
-                if folder_path:
-                    Clock.schedule_once(lambda dt: callback({'success': True, 'folder_path': folder_path}), 0)
-                else:
-                    Clock.schedule_once(lambda dt: callback({'success': False, 'error': 'No folder selected'}), 0)
-                    
+                        
             except Exception as e:
-                print(f"Desktop folder picker error: {e}")
+                print(f"Plyer folder picker error: {e}")
                 Clock.schedule_once(lambda dt: callback({'success': False, 'error': str(e)}), 0)
         
         thread = threading.Thread(target=pick_folder)

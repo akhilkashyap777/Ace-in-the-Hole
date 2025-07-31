@@ -9,6 +9,7 @@ import re
 import json
 import signal
 from kivy.clock import Clock
+from plyer import filechooser
 
 # Import the core class
 from video_vault_core_optimized import VideoVaultCore, IMAGEIO_AVAILABLE, PSUTIL_AVAILABLE
@@ -644,28 +645,25 @@ class VideoVaultCoreExtended(VideoVaultCore):
     # REMOVED: android_folder_picker method completely
 
     def desktop_folder_picker(self, callback):
-        """Desktop folder picker using tkinter"""
+        """Desktop folder picker using plyer"""
         def pick_folder():
             try:
-                import tkinter as tk
-                from tkinter import filedialog
+                def on_selection(selection):
+                    if selection and len(selection) > 0:
+                        # For folder selection, plyer returns the selected folder path
+                        folder_path = selection[0] if isinstance(selection, list) else selection
+                        Clock.schedule_once(lambda dt: callback({'success': True, 'folder_path': folder_path}), 0)
+                    else:
+                        Clock.schedule_once(lambda dt: callback({'success': False, 'error': 'No folder selected'}), 0)
                 
-                root = tk.Tk()
-                root.withdraw()
-                
-                folder_path = filedialog.askdirectory(
+                # Use choose_dir for folder selection
+                filechooser.choose_dir(
+                    on_selection=on_selection,
                     title="Select Export Destination Folder"
                 )
-                
-                root.destroy()
-                
-                if folder_path:
-                    Clock.schedule_once(lambda dt: callback({'success': True, 'folder_path': folder_path}), 0)
-                else:
-                    Clock.schedule_once(lambda dt: callback({'success': False, 'error': 'No folder selected'}), 0)
-                    
+                        
             except Exception as e:
-                print(f"Desktop folder picker error: {e}")
+                print(f"Plyer folder picker error: {e}")
                 Clock.schedule_once(lambda dt: callback({'success': False, 'error': str(e)}), 0)
         
         thread = threading.Thread(target=pick_folder)

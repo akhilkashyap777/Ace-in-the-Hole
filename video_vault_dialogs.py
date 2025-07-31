@@ -9,11 +9,6 @@ from kivy.uix.filechooser import FileChooserIconView
 from kivy.clock import Clock
 from kivy.metrics import dp
 
-# REMOVED: Android imports completely
-# Desktop-only imports
-import tkinter as tk
-from tkinter import filedialog
-
 # SIMPLIFIED: Desktop-only platform detection
 ANDROID = False  # Always False for desktop-only version
 
@@ -196,7 +191,7 @@ def show_fallback_file_picker(callback):
     def on_select(instance):
         if filechooser.selection:
             popup.dismiss()
-            Clock.schedule_once(lambda dt: callback(filechooser.selection), 0.1)
+            callback(filechooser.selection)
         else:
             popup.dismiss()
     
