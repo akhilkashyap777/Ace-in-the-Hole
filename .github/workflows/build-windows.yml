@@ -57,7 +57,6 @@ jobs:
         import cv2; print('OK opencv-python')
         import qrcode; print('OK qrcode')
         import numpy; print('OK numpy')
-        import tkinter; print('OK tkinter')
         print('All imports successful!')
         "
     
@@ -80,7 +79,6 @@ jobs:
           --include-package=pygame `
           --include-package=qrcode `
           --include-package=requests `
-          --include-package=tkinter `
           --include-package=threading `
           --include-package=json `
           --include-package=datetime `
@@ -90,8 +88,6 @@ jobs:
           --include-package=subprocess `
           --include-package=platform `
           --include-package=re `
-          --include-module=tkinter.filedialog `
-          --include-module=tkinter.messagebox `
           --enable-console `
           --output-filename=AceInTheHole.exe `
           --assume-yes-for-downloads `
@@ -273,6 +269,7 @@ jobs:
         - Fixed AppxManifest.xml structure
         - Added missing Resources section
         - Added all required logo assets
+        - Replaced tkinter with plyer for cross-platform compatibility
         
         Packages Created:
         1. AceInTheHole-MSIX-Complete - Store-ready package
@@ -281,7 +278,7 @@ jobs:
         This build should resolve the 'Processing...' freeze!
         
         Version: 1.0.4.0
-        Total packages included: 27
+        Total packages included: 26
         "@ | Out-File -FilePath "build-info.txt" -Encoding UTF8
     
     - name: Upload build info
