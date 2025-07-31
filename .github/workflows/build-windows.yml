@@ -117,7 +117,7 @@ jobs:
                  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
                  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
           <Identity Name="AkhilKashyap.AceInTheHole" 
-                    Publisher="CN=Akhil Kashyap" 
+                    Publisher="CN=AkhilKashyap" 
                     Version="1.0.4.0" />
           <Properties>
             <DisplayName>Ace in the Hole</DisplayName>
@@ -128,21 +128,23 @@ jobs:
           <Dependencies>
             <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
           </Dependencies>
+          <Resources>
+            <Resource Language="x-generate"/>
+          </Resources>
           <Applications>
             <Application Id="App" Executable="AceInTheHole.exe" EntryPoint="Windows.FullTrustApplication">
               <uap:VisualElements DisplayName="Ace in the Hole" 
                                   Description="Secure vault for your private files"
                                   BackgroundColor="transparent"
                                   Square150x150Logo="Assets\Square150x150Logo.png"
-                                  Square44x44Logo="Assets\Square44x44Logo.png" />
+                                  Square44x44Logo="Assets\Square44x44Logo.png">
+                <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+                <uap:SplashScreen Image="Assets\SplashScreen.png" />
+              </uap:VisualElements>
             </Application>
           </Applications>
           <Capabilities>
             <rescap:Capability Name="runFullTrust" />
-            <Capability Name="documentsLibrary" />
-            <Capability Name="picturesLibrary" />
-            <Capability Name="videosLibrary" />
-            <Capability Name="musicLibrary" />
           </Capabilities>
         </Package>
         "@ | Out-File -FilePath "AppxManifest.xml" -Encoding UTF8
@@ -151,13 +153,16 @@ jobs:
       run: |
         mkdir Assets
         Add-Type -AssemblyName System.Drawing
-        $bmp150 = New-Object System.Drawing.Bitmap(150, 150)
-        $graphics150 = [System.Drawing.Graphics]::FromImage($bmp150)
-        $graphics150.Clear([System.Drawing.Color]::Blue)
-        $bmp150.Save("Assets\Square150x150Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
-        $graphics150.Dispose()
-        $bmp150.Dispose()
         
+        # StoreLogo 50x50
+        $bmp50 = New-Object System.Drawing.Bitmap(50, 50)
+        $graphics50 = [System.Drawing.Graphics]::FromImage($bmp50)
+        $graphics50.Clear([System.Drawing.Color]::Blue)
+        $bmp50.Save("Assets\StoreLogo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphics50.Dispose()
+        $bmp50.Dispose()
+        
+        # Square44x44Logo
         $bmp44 = New-Object System.Drawing.Bitmap(44, 44)
         $graphics44 = [System.Drawing.Graphics]::FromImage($bmp44)
         $graphics44.Clear([System.Drawing.Color]::Blue)
@@ -165,12 +170,29 @@ jobs:
         $graphics44.Dispose()
         $bmp44.Dispose()
         
-        $bmp50 = New-Object System.Drawing.Bitmap(50, 50)
-        $graphics50 = [System.Drawing.Graphics]::FromImage($bmp50)
-        $graphics50.Clear([System.Drawing.Color]::Blue)
-        $bmp50.Save("Assets\StoreLogo.png", [System.Drawing.Imaging.ImageFormat]::Png)
-        $graphics50.Dispose()
-        $bmp50.Dispose()
+        # Square150x150Logo
+        $bmp150 = New-Object System.Drawing.Bitmap(150, 150)
+        $graphics150 = [System.Drawing.Graphics]::FromImage($bmp150)
+        $graphics150.Clear([System.Drawing.Color]::Blue)
+        $bmp150.Save("Assets\Square150x150Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphics150.Dispose()
+        $bmp150.Dispose()
+        
+        # Wide310x150Logo
+        $bmpWide = New-Object System.Drawing.Bitmap(310, 150)
+        $graphicsWide = [System.Drawing.Graphics]::FromImage($bmpWide)
+        $graphicsWide.Clear([System.Drawing.Color]::Blue)
+        $bmpWide.Save("Assets\Wide310x150Logo.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphicsWide.Dispose()
+        $bmpWide.Dispose()
+        
+        # SplashScreen 620x300
+        $bmpSplash = New-Object System.Drawing.Bitmap(620, 300)
+        $graphicsSplash = [System.Drawing.Graphics]::FromImage($bmpSplash)
+        $graphicsSplash.Clear([System.Drawing.Color]::Blue)
+        $bmpSplash.Save("Assets\SplashScreen.png", [System.Drawing.Imaging.ImageFormat]::Png)
+        $graphicsSplash.Dispose()
+        $bmpSplash.Dispose()
     
     - name: Create MSIX Package Structure
       run: |
@@ -237,7 +259,7 @@ jobs:
         @"
         COMPLETE BUILD - All Dependencies Included!
         
-        Fixed All Issues:
+        Fixed Issues:
         - Added mutagen (audio metadata)
         - Added pygame (audio playback)  
         - Added imageio + imageio-ffmpeg (video processing)
@@ -248,6 +270,9 @@ jobs:
         - Added qrcode (QR generation)
         - Added numpy (required by opencv)
         - Included all built-in modules explicitly
+        - Fixed AppxManifest.xml structure
+        - Added missing Resources section
+        - Added all required logo assets
         
         Packages Created:
         1. AceInTheHole-MSIX-Complete - Store-ready package
