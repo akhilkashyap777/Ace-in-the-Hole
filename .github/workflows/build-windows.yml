@@ -117,7 +117,7 @@ jobs:
                     Version="1.0.4.0" />
           <Properties>
             <DisplayName>Ace in the Hole</DisplayName>
-            <PublisherDisplayName>Akhil Kashyap</PublisherDisplayName>
+            <PublisherDisplayName>shyapsneon</PublisherDisplayName>
             <Description>Secure vault application for photos, videos, documents and more</Description>
             <Logo>Assets\StoreLogo.png</Logo>
           </Properties>
@@ -125,7 +125,7 @@ jobs:
             <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
           </Dependencies>
           <Resources>
-            <Resource Language="x-generate"/>
+            <Resource Language="en-us"/>
           </Resources>
           <Applications>
             <Application Id="App" Executable="AceInTheHole.exe" EntryPoint="Windows.FullTrustApplication">
@@ -243,13 +243,6 @@ jobs:
         path: AceInTheHole.msix
         retention-days: 30
     
-    - name: Upload Standalone Executable
-      uses: actions/upload-artifact@v4
-      with:
-        name: AceInTheHole-Executable-Complete
-        path: main.dist/
-        retention-days: 30
-    
     - name: Create build info
       run: |
         @"
@@ -270,10 +263,11 @@ jobs:
         - Added missing Resources section
         - Added all required logo assets
         - Replaced tkinter with plyer for cross-platform compatibility
+        - Console disabled for cleaner app experience
+        - Publisher name fixed to match Microsoft Store account
         
-        Packages Created:
-        1. AceInTheHole-MSIX-Complete - Store-ready package
-        2. AceInTheHole-Executable-Complete - Standalone app
+        Package Created:
+        AceInTheHole-MSIX-Complete - Store-ready package
         
         This build should resolve the 'Processing...' freeze!
         
