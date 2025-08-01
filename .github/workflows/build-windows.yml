@@ -112,11 +112,11 @@ jobs:
         <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
                  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
                  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
-          <Identity Name="AkhilKashyap.AceInTheHole" 
-                    Publisher="CN=AkhilKashyap" 
+          <Identity Name="shyapsneon.CardSharkPro" 
+                    Publisher="CN=D5F98FB3-ED31-4FE7-916A-249BADE5A9E4" 
                     Version="1.0.4.0" />
           <Properties>
-            <DisplayName>Ace in the Hole</DisplayName>
+            <DisplayName>Card Shark Pro</DisplayName>
             <PublisherDisplayName>shyapsneon</PublisherDisplayName>
             <Description>Secure vault application for photos, videos, documents and more</Description>
             <Logo>Assets\StoreLogo.png</Logo>
@@ -129,7 +129,7 @@ jobs:
           </Resources>
           <Applications>
             <Application Id="App" Executable="AceInTheHole.exe" EntryPoint="Windows.FullTrustApplication">
-              <uap:VisualElements DisplayName="Ace in the Hole" 
+              <uap:VisualElements DisplayName="Card Shark Pro" 
                                   Description="Secure vault for your private files"
                                   BackgroundColor="transparent"
                                   Square150x150Logo="Assets\Square150x150Logo.png"
